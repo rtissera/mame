@@ -25,6 +25,8 @@
 #include "eigccx86.h"
 #elif defined(__ppc__) || defined (__PPC__) || defined(__ppc64__) || defined(__PPC64__)
 #include "eigccppc.h"
+#elif defined(__aarch64__)
+#include "eigccarm.h"
 #else
 #error "no matching assembler implementations found - please compile with NOASM=1"
 #endif
