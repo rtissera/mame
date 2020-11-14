@@ -12,15 +12,6 @@
 #ifndef MAME_OSD_EIGCCARM_H
 #define MAME_OSD_EIGCCARM_H
 
-// Include NEON intrinsics headers
-
-/* Conflicts with softfloat3 from arm_neon.h
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
-#include <cstdlib>
-#include <arm_neon.h>   // NEON
-#endif*/
-
-
 /***************************************************************************
     INLINE MATH FUNCTIONS
 ***************************************************************************/
@@ -84,12 +75,10 @@ inline int32_t ATTR_CONST ATTR_FORCE_INLINE
 _mul_32x32_hi(int32_t a, int32_t b)
 {
 	int32_t result;
-	int64_t temp;
 	__asm__ (
-		" smull  %x[temp], %w[a], %w[b] ;"
-		" lsr    %x[result], %x[temp], 32 ;"
+		" smull  %x[result], %w[a], %w[b] ;"
+		" lsr    %x[result], %x[result], 32 ;"
 		: [result] "=r" (result)   // result in a register
-		, [temp]   "=r" (temp)     // temp in a register
 		: [a]      "%r" (a)        // 'a' should also in a register
 		, [b]      "r"  (b)        // 'b' should also be in a register
 		: "cc"                     // Clobbers condition codes
@@ -109,12 +98,10 @@ inline uint32_t ATTR_CONST ATTR_FORCE_INLINE
 _mulu_32x32_hi(uint32_t a, uint32_t b)
 {
 	uint32_t result;
-	uint64_t temp;
 	__asm__ (
-		" umull  %x[temp], %w[a], %w[b] ;"
-		" lsr    %x[result], %x[temp], 32 ;"
+		" umull  %x[result], %w[a], %w[b] ;"
+		" lsr    %x[result], %x[result], 32 ;"
 		: [result] "=r" (result)   // result in a register
-		, [temp]   "=r" (temp)     // temp in a register
 		: [a]      "%r" (a)        // 'a' should also in a register
 		, [b]      "r"  (b)        // 'b' should also be in a register
 		: "cc"                     // Clobbers condition codes
@@ -136,16 +123,14 @@ inline int32_t ATTR_CONST ATTR_FORCE_INLINE
 _mul_32x32_shift(int32_t a, int32_t b, uint8_t shift)
 {
 	int32_t result;
-	int64_t temp;
 
 	// Valid for (0 <= shift <= 63)
 	__asm__ (
-		" smull  %x[temp], %w[a], %w[b] ;"
-		" lsr    %x[result], %x[temp], %[shift] ;"
+		" smull  %x[result], %w[a], %w[b] ;"
+		" lsr    %x[result], %x[result], %[shift] ;"
 		: [result] "=r" (result)   // result in a register
-		, [temp]   "=r" (temp)     // temp in a register
 		: [a]      "%r" (a)        // 'a' should also in a register
-		, [b]      "%r" (b)        // 'b' should also be in a register
+		, [b]      "r"  (b)        // 'b' should also be in a register
 		, [shift]  "L"  (shift)    // 'shift' should be a immediate constant
 		: "cc"                     // Clobbers condition codes
 	);
@@ -166,16 +151,13 @@ inline uint32_t ATTR_CONST ATTR_FORCE_INLINE
 _mulu_32x32_shift(uint32_t a, uint32_t b, uint8_t shift)
 {
 	uint32_t result;
-	uint64_t temp;
 
 	// Valid for (0 <= shift <= 63)
 	__asm__ (
-		" umull  %x[temp], %w[a], %w[b] ;"
-		" lsr    %x[result], %x[temp], %[shift] ;"
+		" umull  %x[result], %w[a], %w[b] ;"
 		: [result] "=r" (result)   // result in a register
-		, [temp]   "=r" (temp)     // temp in a register
 		: [a]      "%r" (a)        // 'a' should also in a register
-		, [b]      "%r" (b)        // 'b' should also be in a register
+		, [b]      "r" (b)         // 'b' should also be in a register
 		, [shift]  "L"  (shift)    // 'shift' should be a immediate constant
 		: "cc"                     // Clobbers condition codes
 	);
@@ -184,30 +166,25 @@ _mulu_32x32_shift(uint32_t a, uint32_t b, uint8_t shift)
 #endif
 
 
-#if 0 // ZERO
-
 /*-------------------------------------------------
     div_64x32 - perform a signed 64 bit x 32 bit
     divide and return the 32 bit quotient
 -------------------------------------------------*/
 
-#ifndef __x86_64__
+#if defined(__aarch64__)
 #define div_64x32 _div_64x32
 inline int32_t ATTR_CONST ATTR_FORCE_INLINE
 _div_64x32(int64_t a, int32_t b)
 {
-	int32_t result, temp;
-
-	// Throws arithmetic exception if result doesn't fit in 32 bits
+	int32_t result;
 	__asm__ (
-		" idivl  %[b] ;"
-		: [result] "=a" (result)    // result ends up in eax
-		, [temp]   "=d" (temp)      // this is effectively a clobber
-		: [a]      "A"  (a)         // 'a' in edx:eax
-		, [b]      "rm" (b)         // 'b' in register or memory
-		: "cc"                      // clobbers condition codes
+		" sxtw   %x[b], %w[b] ;"
+		" sdiv   %x[result], %x[a], %x[b] ;"
+		: [result] "=r" (result)   // result in a register
+		: [a]      "%r" (a)        // 'a' should also in a register
+		, [b]      "r"  (b)        // 'b' should also be in a register
+		: "cc"                     // Clobbers condition codes
 	);
-
 	return result;
 }
 #endif
@@ -218,27 +195,23 @@ _div_64x32(int64_t a, int32_t b)
     divide and return the 32 bit quotient
 -------------------------------------------------*/
 
-#ifndef __x86_64__
+#if defined(__aarch64__)
 #define divu_64x32 _divu_64x32
 inline uint32_t ATTR_CONST ATTR_FORCE_INLINE
 _divu_64x32(uint64_t a, uint32_t b)
 {
-	uint32_t result, temp;
-
-	// Throws arithmetic exception if result doesn't fit in 32 bits
+	uint32_t result;
 	__asm__ (
-		" divl  %[b] ;"
-		: [result] "=a" (result)    // result ends up in eax
-		, [temp]   "=d" (temp)      // this is effectively a clobber
-		: [a]      "A"  (a)         // 'a' in edx:eax
-		, [b]      "rm" (b)         // 'b' in register or memory
-		: "cc"                      // clobbers condition codes
+//		" uxtw   %x[b], %w[b] ;"
+		" udiv   %x[result], %x[a], %x[b] ;"
+		: [result] "=r" (result)   // result in a register
+		: [a]      "%r" (a)        // 'a' should also in a register
+		, [b]      "r"  (b)        // 'b' should also be in a register
+		: "cc"                     // Clobbers condition codes
 	);
-
 	return result;
 }
 #endif
-
 
 /*-------------------------------------------------
     div_64x32_rem - perform a signed 64 bit x 32
@@ -246,42 +219,27 @@ _divu_64x32(uint64_t a, uint32_t b)
     32 bit remainder
 -------------------------------------------------*/
 
+#if defined(__aarch64__)
 #define div_64x32_rem _div_64x32_rem
 inline int32_t ATTR_FORCE_INLINE
 _div_64x32_rem(int64_t dividend, int32_t divisor, int32_t *remainder)
 {
 	int32_t quotient;
-#ifndef __x86_64__
-
-	// Throws arithmetic exception if result doesn't fit in 32 bits
-	__asm__ (
-		" idivl  %[divisor] ;"
-		: [result]    "=a" (quotient)   // quotient ends up in eax
-		, [remainder] "=d" (*remainder) // remainder ends up in edx
-		: [dividend]  "A"  (dividend)   // 'dividend' in edx:eax
-		, [divisor]   "rm" (divisor)    // 'divisor' in register or memory
-		: "cc"                          // clobbers condition codes
-	);
-
-#else
-	int32_t const divh{ int32_t(uint32_t(uint64_t(dividend) >> 32)) };
-	int32_t const divl{ int32_t(uint32_t(uint64_t(dividend))) };
-
-	// Throws arithmetic exception if result doesn't fit in 32 bits
-	__asm__ (
-		" idivl  %[divisor] ;"
-		: [result]    "=a" (quotient)   // quotient ends up in eax
-		, [remainder] "=d" (*remainder) // remainder ends up in edx
-		: [divl]      "a"  (divl)       // 'dividend' in edx:eax
-		, [divh]      "d"  (divh)
-		, [divisor]   "rm" (divisor)    // 'divisor' in register or memory
-		: "cc"                          // clobbers condition codes
-	);
-
-#endif
-	return quotient;
+	int32_t remains;
+        __asm__ (
+                " sxtw   %x[divisor], %w[divisor] ;"
+                " sdiv   %x[quotient], %x[dividend], %x[divisor] ;"
+		" msub   %x[remains], %x[quotient], %x[divisor], %x[dividend] ;"
+                : [quotient]  "=r" (quotient)   // quotient in a register
+		, [remains]   "=r" (remains)    // remains in a register
+                : [dividend]  "%r" (dividend)   // 'dividend' should also in a register
+                , [divisor]   "r"  (divisor)    // 'divisor' should also be in a register
+                : "cc"                          // Clobbers condition codes
+        );
+	*remainder = (int32_t)remains;
+        return quotient;
 }
-
+#endif
 
 /*-------------------------------------------------
     divu_64x32_rem - perform an unsigned 64 bit x
@@ -289,42 +247,29 @@ _div_64x32_rem(int64_t dividend, int32_t divisor, int32_t *remainder)
     and 32 bit remainder
 -------------------------------------------------*/
 
+#if defined(__aarch64__)
 #define divu_64x32_rem _divu_64x32_rem
 inline uint32_t ATTR_FORCE_INLINE
 _divu_64x32_rem(uint64_t dividend, uint32_t divisor, uint32_t *remainder)
 {
-	uint32_t quotient;
-#ifndef __x86_64__
-
-	// Throws arithmetic exception if result doesn't fit in 32 bits
-	__asm__ (
-		" divl  %[divisor] ;"
-		: [result]    "=a" (quotient)   // quotient ends up in eax
-		, [remainder] "=d" (*remainder) // remainder ends up in edx
-		: [dividend]  "A"  (dividend)   // 'dividend' in edx:eax
-		, [divisor]   "rm" (divisor)    // 'divisor' in register or memory
-		: "cc"                          // clobbers condition codes
-	);
-
-#else
-	uint32_t const divh{ uint32_t(dividend >> 32) };
-	uint32_t const divl{ uint32_t(dividend) };
-
-	// Throws arithmetic exception if result doesn't fit in 32 bits
-	__asm__ (
-		" divl  %[divisor] ;"
-		: [result]    "=a" (quotient)   // quotient ends up in eax
-		, [remainder] "=d" (*remainder) // remainder ends up in edx
-		: [divl]      "a"  (divl)       // 'dividend' in edx:eax
-		, [divh]      "d"  (divh)
-		, [divisor]   "rm" (divisor)    // 'divisor' in register or memory
-		: "cc"                          // clobbers condition codes
-	);
-
-#endif
-	return quotient;
+        uint32_t quotient;
+        uint32_t remains;
+        __asm__ (
+//              " uxtw   %x[divisor], %w[divisor] ;"
+                " udiv   %x[quotient], %x[dividend], %x[divisor] ;"
+                " msub   %x[remains], %x[quotient], %x[divisor], %x[dividend] ;"
+                : [quotient]  "=r" (quotient)   // quotient in a register
+                , [remains]   "=r" (remains)    // remains in a register
+                : [dividend]  "%r" (dividend)   // 'dividend' should also in a register
+                , [divisor]   "r"  (divisor)    // 'divisor' should also be in a register
+                : "cc"                          // Clobbers condition codes
+        );
+        *remainder = (uint32_t)remains;
+        return quotient;
 }
+#endif
 
+#if 0 // ZERO
 
 /*-------------------------------------------------
     div_32x32_shift - perform a signed divide of
