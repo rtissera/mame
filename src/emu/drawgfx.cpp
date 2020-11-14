@@ -21,7 +21,7 @@
     offset
 -------------------------------------------------*/
 
-static inline int readbit(const u8 *src, unsigned int bitnum)
+static inline int readbit(const u8 *src, const unsigned int bitnum)
 {
 	return src[bitnum / 8] & (0x80 >> (bitnum % 8));
 }
@@ -33,7 +33,7 @@ static inline int readbit(const u8 *src, unsigned int bitnum)
     than the width
 -------------------------------------------------*/
 
-static inline s32 normalize_xscroll(const bitmap_t &bitmap, s32 xscroll)
+static inline s32 normalize_xscroll(const bitmap_t &bitmap, const s32 xscroll)
 {
 	return (xscroll >= 0) ? xscroll % bitmap.width() : (bitmap.width() - (-xscroll) % bitmap.width());
 }
@@ -350,7 +350,7 @@ void gfx_element::decode(u32 code)
 -------------------------------------------------*/
 
 void gfx_element::opaque(bitmap_ind16 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty)
+		u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty)
 {
 	color = colorbase() + granularity() * (color % colors());
 	code %= elements();
@@ -358,7 +358,7 @@ void gfx_element::opaque(bitmap_ind16 &dest, const rectangle &cliprect,
 }
 
 void gfx_element::opaque(bitmap_rgb32 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty)
+		u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty)
 {
 	const pen_t *paldata = m_palette->pens() + colorbase() + granularity() * (color % colors());
 	code %= elements();
@@ -372,8 +372,8 @@ void gfx_element::opaque(bitmap_rgb32 &dest, const rectangle &cliprect,
 -------------------------------------------------*/
 
 void gfx_element::transpen(bitmap_ind16 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
-		u32 trans_pen)
+		u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
+		const u32 trans_pen)
 {
 	// special case invalid pens to opaque
 	if (trans_pen > 0xff)
@@ -399,8 +399,8 @@ void gfx_element::transpen(bitmap_ind16 &dest, const rectangle &cliprect,
 }
 
 void gfx_element::transpen(bitmap_rgb32 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
-		u32 trans_pen)
+		u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
+		const u32 trans_pen)
 {
 	// special case invalid pens to opaque
 	if (trans_pen > 0xff)
@@ -433,8 +433,8 @@ void gfx_element::transpen(bitmap_rgb32 &dest, const rectangle &cliprect,
 -------------------------------------------------*/
 
 void gfx_element::transpen_raw(bitmap_ind16 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
-		u32 trans_pen)
+		u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
+		const u32 trans_pen)
 {
 	// early out if completely transparent
 	code %= elements();
@@ -446,8 +446,8 @@ void gfx_element::transpen_raw(bitmap_ind16 &dest, const rectangle &cliprect,
 }
 
 void gfx_element::transpen_raw(bitmap_rgb32 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
-		u32 trans_pen)
+		u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
+		const u32 trans_pen)
 {
 	// early out if completely transparent
 	code %= elements();
@@ -466,8 +466,8 @@ void gfx_element::transpen_raw(bitmap_rgb32 &dest, const rectangle &cliprect,
 -------------------------------------------------*/
 
 void gfx_element::transmask(bitmap_ind16 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
-		u32 trans_mask)
+		u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
+		const u32 trans_mask)
 {
 	// special case 0 mask to opaque
 	if (trans_mask == 0)
@@ -493,8 +493,8 @@ void gfx_element::transmask(bitmap_ind16 &dest, const rectangle &cliprect,
 }
 
 void gfx_element::transmask(bitmap_rgb32 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
-		u32 trans_mask)
+		u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
+		const u32 trans_mask)
 {
 	// special case 0 mask to opaque
 	if (trans_mask == 0)
@@ -527,7 +527,7 @@ void gfx_element::transmask(bitmap_rgb32 &dest, const rectangle &cliprect,
 -------------------------------------------------*/
 
 void gfx_element::transtable(bitmap_ind16 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
+		u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
 		const u8 *pentable)
 {
 	assert(pentable != nullptr);
@@ -540,7 +540,7 @@ void gfx_element::transtable(bitmap_ind16 &dest, const rectangle &cliprect,
 }
 
 void gfx_element::transtable(bitmap_rgb32 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
+		u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
 		const u8 *pentable)
 {
 	assert(pentable != nullptr);
@@ -560,8 +560,8 @@ void gfx_element::transtable(bitmap_rgb32 &dest, const rectangle &cliprect,
 -------------------------------------------------*/
 
 void gfx_element::alpha(bitmap_rgb32 &dest, const rectangle &cliprect,
-		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
-		u32 trans_pen, u8 alpha_val)
+		u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
+		const u32 trans_pen, const u8 alpha_val)
 {
 	// special case alpha = 0xff
 	if (alpha_val == 0xff)

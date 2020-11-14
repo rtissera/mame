@@ -204,20 +204,20 @@ public:
 	// ----- core graphics drawing -----
 
 	// core drawgfx implementation
-	template <typename BitmapType, typename FunctionClass> void drawgfx_core(BitmapType &dest, const rectangle &cliprect, u32 code, int flipx, int flipy, s32 destx, s32 desty, FunctionClass pixel_op);
+	template <typename BitmapType, typename FunctionClass> void drawgfx_core(BitmapType &dest, const rectangle &cliprect, const u32 code, const int flipx, const int flipy, s32 destx, s32 desty, FunctionClass pixel_op);
 
 	// specific drawgfx implementations for each transparency type
-	void opaque(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty);
-	void opaque(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty);
-	void transpen(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, u32 transpen);
-	void transpen(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, u32 transpen);
-	void transpen_raw(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, u32 transpen);
-	void transpen_raw(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, u32 transpen);
-	void transmask(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, u32 transmask);
-	void transmask(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, u32 transmask);
-	void transtable(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, const u8 *pentable);
-	void transtable(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, const u8 *pentable);
-	void alpha(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, u32 transpen, u8 alpha);
+	void opaque(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty);
+	void opaque(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty);
+	void transpen(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transpen);
+	void transpen(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transpen);
+	void transpen_raw(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transpen);
+	void transpen_raw(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transpen);
+	void transmask(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transmask);
+	void transmask(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transmask);
+	void transtable(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u8 *pentable);
+	void transtable(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u8 *pentable);
+	void alpha(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transpen, const u8 alpha);
 
 	// ----- zoomed graphics drawing -----
 

@@ -419,7 +419,7 @@ while (0)
 
 
 template <typename BitmapType, typename FunctionClass>
-inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprect, u32 code, int flipx, int flipy, s32 destx, s32 desty, FunctionClass pixel_op)
+inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprect, const u32 code, const int flipx, const int flipy, s32 destx, s32 desty, FunctionClass pixel_op)
 {
 	g_profiler.start(PROFILER_DRAWGFX);
 	do {
