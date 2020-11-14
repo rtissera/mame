@@ -210,7 +210,7 @@ public:
 	void opaque(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty);
 	void opaque(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty);
 	void transpen(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transpen);
-	void transpen(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transpen);
+	void transpen(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transpen);
 	void transpen_raw(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transpen);
 	void transpen_raw(bitmap_rgb32 &dest, const rectangle &cliprect, u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transpen);
 	void transmask(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty, const u32 transmask);
@@ -222,7 +222,7 @@ public:
 	// ----- zoomed graphics drawing -----
 
 	// core zoom implementation
-	template <typename BitmapType, typename FunctionClass> void drawgfxzoom_core(BitmapType &dest, const rectangle &cliprect, u32 code, int flipx, int flipy, s32 destx, s32 desty, u32 scalex, u32 scaley, FunctionClass pixel_op);
+	template <typename BitmapType, typename FunctionClass> void drawgfxzoom_core(BitmapType &dest, const rectangle &cliprect, const u32 code, const int flipx, const int flipy, s32 destx, s32 desty, u32 scalex, u32 scaley, FunctionClass pixel_op);
 
 	// specific zoom implementations for each transparency type
 	void zoom_opaque(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, u32 scalex, u32 scaley);
@@ -240,7 +240,7 @@ public:
 	// ----- priority masked graphics drawing -----
 
 	// core prio implementation
-	template <typename BitmapType, typename PriorityType, typename FunctionClass> void drawgfx_core(BitmapType &dest, const rectangle &cliprect, u32 code, int flipx, int flipy, s32 destx, s32 desty, PriorityType &priority, FunctionClass pixel_op);
+	template <typename BitmapType, typename PriorityType, typename FunctionClass> void drawgfx_core(BitmapType &dest, const rectangle &cliprect, const u32 code, const int flipx, const int flipy, s32 destx, s32 desty, PriorityType &priority, FunctionClass pixel_op);
 
 	// specific prio implementations for each transparency type
 	void prio_opaque(bitmap_ind16 &dest, const rectangle &cliprect, u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty, bitmap_ind8 &priority, u32 pmask);

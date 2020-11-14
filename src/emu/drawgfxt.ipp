@@ -481,8 +481,8 @@ inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprec
 		const u8 *srcdata = get_data(code);
 
 		// compute how many blocks of 4 pixels we have
-		u32 numblocks = (destendx + 1 - destx) / 4;
-		u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
+		const u32 numblocks = (destendx + 1 - destx) / 4;
+		const u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
 
 		// adjust srcdata to point to the first source pixel of the row
 		srcdata += srcy * rowbytes() + srcx;
@@ -500,6 +500,9 @@ inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprec
 				// iterate over unrolled blocks of 4
 				for (s32 curx = 0; curx < numblocks; curx++)
 				{
+					__builtin_prefetch(srcptr+4, 0, 0);
+					__builtin_prefetch(destptr+4, 1, 0);
+
 					pixel_op(destptr[0], srcptr[0]);
 					pixel_op(destptr[1], srcptr[1]);
 					pixel_op(destptr[2], srcptr[2]);
@@ -532,6 +535,9 @@ inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprec
 				// iterate over unrolled blocks of 4
 				for (s32 curx = 0; curx < numblocks; curx++)
 				{
+					__builtin_prefetch(srcptr-4, 0, 0);
+					__builtin_prefetch(destptr+4, 1, 0);
+
 					pixel_op(destptr[0], srcptr[ 0]);
 					pixel_op(destptr[1], srcptr[-1]);
 					pixel_op(destptr[2], srcptr[-2]);
@@ -556,7 +562,7 @@ inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprec
 
 
 template <typename BitmapType, typename PriorityType, typename FunctionClass>
-inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprect, u32 code, int flipx, int flipy, s32 destx, s32 desty, PriorityType &priority, FunctionClass pixel_op)
+inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprect, const u32 code, const int flipx, const int flipy, s32 destx, s32 desty, PriorityType &priority, FunctionClass pixel_op)
 {
 	g_profiler.start(PROFILER_DRAWGFX);
 	do {
@@ -619,8 +625,8 @@ inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprec
 		const u8 *srcdata = get_data(code);
 
 		// compute how many blocks of 4 pixels we have
-		u32 numblocks = (destendx + 1 - destx) / 4;
-		u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
+		const u32 numblocks = (destendx + 1 - destx) / 4;
+		const u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
 
 		// adjust srcdata to point to the first source pixel of the row
 		srcdata += srcy * rowbytes() + srcx;
@@ -639,6 +645,10 @@ inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprec
 				// iterate over unrolled blocks of 4
 				for (s32 curx = 0; curx < numblocks; curx++)
 				{
+					__builtin_prefetch(srcptr+4, 0, 0);
+					__builtin_prefetch(destptr+4, 1, 0);
+					__builtin_prefetch(priptr+4, 1, 0);
+
 					pixel_op(destptr[0], priptr[0], srcptr[0]);
 					pixel_op(destptr[1], priptr[1], srcptr[1]);
 					pixel_op(destptr[2], priptr[2], srcptr[2]);
@@ -674,6 +684,10 @@ inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprec
 				// iterate over unrolled blocks of 4
 				for (s32 curx = 0; curx < numblocks; curx++)
 				{
+					__builtin_prefetch(srcptr-4, 0, 0);
+					__builtin_prefetch(destptr+4, 1, 0);
+					__builtin_prefetch(priptr+4, 1, 0);
+
 					pixel_op(destptr[0], priptr[0], srcptr[ 0]);
 					pixel_op(destptr[1], priptr[1], srcptr[-1]);
 					pixel_op(destptr[2], priptr[2], srcptr[-2]);
@@ -722,7 +736,7 @@ inline void gfx_element::drawgfx_core(BitmapType &dest, const rectangle &cliprec
 
 
 template <typename BitmapType, typename FunctionClass>
-inline void gfx_element::drawgfxzoom_core(BitmapType &dest, const rectangle &cliprect, u32 code, int flipx, int flipy, s32 destx, s32 desty, u32 scalex, u32 scaley, FunctionClass pixel_op)
+inline void gfx_element::drawgfxzoom_core(BitmapType &dest, const rectangle &cliprect, const u32 code, const int flipx, const int flipy, s32 destx, s32 desty, const u32 scalex, const u32 scaley, FunctionClass pixel_op)
 {
 	g_profiler.start(PROFILER_DRAWGFX);
 	do {
@@ -795,8 +809,8 @@ inline void gfx_element::drawgfxzoom_core(BitmapType &dest, const rectangle &cli
 		const u8 *srcdata = get_data(code);
 
 		// compute how many blocks of 4 pixels we have
-		u32 numblocks = (destendx + 1 - destx) / 4;
-		u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
+		const u32 numblocks = (destendx + 1 - destx) / 4;
+		const u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
 
 		// iterate over pixels in Y
 		for (s32 cury = desty; cury <= destendy; cury++)
@@ -912,8 +926,8 @@ inline void gfx_element::drawgfxzoom_core(BitmapType &dest, const rectangle &cli
 		const u8 *srcdata = get_data(code);
 
 		// compute how many blocks of 4 pixels we have
-		u32 numblocks = (destendx + 1 - destx) / 4;
-		u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
+		const u32 numblocks = (destendx + 1 - destx) / 4;
+		const u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
 
 		// iterate over pixels in Y
 		for (s32 cury = desty; cury <= destendy; cury++)
@@ -1038,8 +1052,8 @@ inline void copybitmap_core(BitmapType &dest, const BitmapType &src, int flipx, 
 		}
 
 		// compute how many blocks of 4 pixels we have
-		u32 numblocks = (destendx + 1 - destx) / 4;
-		u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
+		const u32 numblocks = (destendx + 1 - destx) / 4;
+		const u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
 
 		// compute the address of the first source pixel of the first row
 		const auto *srcdata = &src.pix(srcy, srcx);
@@ -1179,8 +1193,8 @@ inline void copybitmap_core(BitmapType &dest, const BitmapType &src, int flipx, 
 		}
 
 		// compute how many blocks of 4 pixels we have
-		u32 numblocks = (destendx + 1 - destx) / 4;
-		u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
+		const u32 numblocks = (destendx + 1 - destx) / 4;
+		const u32 leftovers = (destendx + 1 - destx) - 4 * numblocks;
 
 		// compute the address of the first source pixel of the first row
 		const auto *srcdata = &src.pix(srcy, srcx);
@@ -1307,8 +1321,8 @@ inline void copyrozbitmap_core(BitmapType &dest, const rectangle &cliprect, cons
 	starty += cliprect.left() * incxy + cliprect.top() * incyy;
 
 	// compute how many blocks of 4 pixels we have
-	u32 numblocks = cliprect.width() / 4;
-	u32 leftovers = cliprect.width() - 4 * numblocks;
+	const u32 numblocks = cliprect.width() / 4;
+	const u32 leftovers = cliprect.width() - 4 * numblocks;
 
 	// if incxy and incyx are 0, then we aren't rotating, just zooming
 	if (incxy == 0 && incyx == 0)
@@ -1569,8 +1583,8 @@ inline void copyrozbitmap_core(BitmapType &dest, const rectangle &cliprect, cons
 	starty += cliprect.left() * incxy + cliprect.top() * incyy;
 
 	// compute how many blocks of 4 pixels we have
-	u32 numblocks = cliprect.width() / 4;
-	u32 leftovers = cliprect.width() - 4 * numblocks;
+	const u32 numblocks = cliprect.width() / 4;
+	const u32 leftovers = cliprect.width() - 4 * numblocks;
 
 	// if incxy and incyx are 0, then we aren't rotating, just zooming
 	if (incxy == 0 && incyx == 0)

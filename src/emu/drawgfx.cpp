@@ -21,7 +21,7 @@
     offset
 -------------------------------------------------*/
 
-static inline int readbit(const u8 *src, const unsigned int bitnum)
+constexpr static inline int readbit(const u8 *src, const unsigned int bitnum)
 {
 	return src[bitnum / 8] & (0x80 >> (bitnum % 8));
 }
@@ -33,9 +33,9 @@ static inline int readbit(const u8 *src, const unsigned int bitnum)
     than the width
 -------------------------------------------------*/
 
-static inline s32 normalize_xscroll(const bitmap_t &bitmap, const s32 xscroll)
+constexpr static inline s32 normalize_xscroll(const int32_t &bitmap_width, const s32 xscroll)
 {
-	return (xscroll >= 0) ? xscroll % bitmap.width() : (bitmap.width() - (-xscroll) % bitmap.width());
+	return (xscroll >= 0) ? xscroll % bitmap_width : (bitmap_width - (-xscroll) % bitmap_width);
 }
 
 
@@ -45,9 +45,9 @@ static inline s32 normalize_xscroll(const bitmap_t &bitmap, const s32 xscroll)
     than the height
 -------------------------------------------------*/
 
-static inline s32 normalize_yscroll(const bitmap_t &bitmap, s32 yscroll)
+constexpr static inline s32 normalize_yscroll(const int32_t bitmap_height, s32 yscroll)
 {
-	return (yscroll >= 0) ? yscroll % bitmap.height() : (bitmap.height() - (-yscroll) % bitmap.height());
+	return (yscroll >= 0) ? yscroll % bitmap_height : (bitmap_height - (-yscroll) % bitmap_height);
 }
 
 
@@ -301,12 +301,12 @@ void gfx_element::decode(u32 code)
 				plane < m_layout_planes;
 				plane++, planebit >>= 1)
 		{
-			int planeoffs = code * m_layout_charincrement + m_layout_planeoffset[plane];
+			const int planeoffs = code * m_layout_charincrement + m_layout_planeoffset[plane];
 
 			// iterate over rows
 			for (int y = 0; y < m_origheight; y++)
 			{
-				int yoffs = planeoffs + m_layout_yoffset[y];
+				const int yoffs = planeoffs + m_layout_yoffset[y];
 				u8 *dp = decode_base + y * m_line_modulo;
 
 				// iterate over columns
@@ -399,7 +399,7 @@ void gfx_element::transpen(bitmap_ind16 &dest, const rectangle &cliprect,
 }
 
 void gfx_element::transpen(bitmap_rgb32 &dest, const rectangle &cliprect,
-		u32 code, u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
+		u32 code, const u32 color, const int flipx, const int flipy, const s32 destx, const s32 desty,
 		const u32 trans_pen)
 {
 	// special case invalid pens to opaque
@@ -2148,8 +2148,8 @@ static inline void copyscrollbitmap_trans_common(BitmapClass &dest, const Bitmap
 	// fully scrolling X,Y playfield
 	if (numrows <= 1 && numcols <= 1)
 	{
-		s32 xscroll = normalize_xscroll(src, (numrows == 0) ? 0 : rowscroll[0]);
-		s32 yscroll = normalize_yscroll(src, (numcols == 0) ? 0 : colscroll[0]);
+		s32 xscroll = normalize_xscroll(src.width(), (numrows == 0) ? 0 : rowscroll[0]);
+		s32 yscroll = normalize_yscroll(src.height(), (numcols == 0) ? 0 : colscroll[0]);
 
 		// iterate over all portions of the scroll that overlap the destination
 		for (s32 sx = xscroll - src.width(); sx < dest.width(); sx += src.width())
@@ -2160,7 +2160,7 @@ static inline void copyscrollbitmap_trans_common(BitmapClass &dest, const Bitmap
 	// scrolling columns plus horizontal scroll
 	else if (numrows <= 1)
 	{
-		s32 xscroll = normalize_xscroll(src, (numrows == 0) ? 0 : rowscroll[0]);
+		s32 xscroll = normalize_xscroll(src.width(), (numrows == 0) ? 0 : rowscroll[0]);
 		rectangle subclip = cliprect;
 
 		// determine width of each column
@@ -2179,7 +2179,7 @@ static inline void copyscrollbitmap_trans_common(BitmapClass &dest, const Bitmap
 					break;
 
 			// iterate over reps of the columns in question
-			yscroll = normalize_yscroll(src, yscroll);
+			yscroll = normalize_yscroll(src.height(), yscroll);
 			for (s32 sx = xscroll - src.width(); sx < dest.width(); sx += src.width())
 			{
 				// compute the cliprect for this group
@@ -2196,7 +2196,7 @@ static inline void copyscrollbitmap_trans_common(BitmapClass &dest, const Bitmap
 	// scrolling rows plus vertical scroll
 	else if (numcols <= 1)
 	{
-		s32 yscroll = normalize_yscroll(src, (numcols == 0) ? 0 : colscroll[0]);
+		s32 yscroll = normalize_yscroll(src.height(), (numcols == 0) ? 0 : colscroll[0]);
 		rectangle subclip = cliprect;
 
 		// determine width of each rows
@@ -2215,7 +2215,7 @@ static inline void copyscrollbitmap_trans_common(BitmapClass &dest, const Bitmap
 					break;
 
 			// iterate over reps of the rows in question
-			xscroll = normalize_xscroll(src, xscroll);
+			xscroll = normalize_xscroll(src.width(), xscroll);
 			for (s32 sy = yscroll - src.height(); sy < dest.height(); sy += src.height())
 			{
 				// compute the cliprect for this group
@@ -2251,8 +2251,8 @@ static inline void prio_copyscrollbitmap_trans_common(BitmapClass &dest, const B
 	// fully scrolling X,Y playfield
 	if (numrows <= 1 && numcols <= 1)
 	{
-		s32 xscroll = normalize_xscroll(src, (numrows == 0) ? 0 : rowscroll[0]);
-		s32 yscroll = normalize_yscroll(src, (numcols == 0) ? 0 : colscroll[0]);
+		s32 xscroll = normalize_xscroll(src.width(), (numrows == 0) ? 0 : rowscroll[0]);
+		s32 yscroll = normalize_yscroll(src.height(), (numcols == 0) ? 0 : colscroll[0]);
 
 		// iterate over all portions of the scroll that overlap the destination
 		for (s32 sx = xscroll - src.width(); sx < dest.width(); sx += src.width())
@@ -2263,7 +2263,7 @@ static inline void prio_copyscrollbitmap_trans_common(BitmapClass &dest, const B
 	// scrolling columns plus horizontal scroll
 	else if (numrows <= 1)
 	{
-		s32 xscroll = normalize_xscroll(src, (numrows == 0) ? 0 : rowscroll[0]);
+		s32 xscroll = normalize_xscroll(src.width(), (numrows == 0) ? 0 : rowscroll[0]);
 		rectangle subclip = cliprect;
 
 		// determine width of each column
@@ -2282,7 +2282,7 @@ static inline void prio_copyscrollbitmap_trans_common(BitmapClass &dest, const B
 					break;
 
 			// iterate over reps of the columns in question
-			yscroll = normalize_yscroll(src, yscroll);
+			yscroll = normalize_yscroll(src.height(), yscroll);
 			for (s32 sx = xscroll - src.width(); sx < dest.width(); sx += src.width())
 			{
 				// compute the cliprect for this group
@@ -2299,7 +2299,7 @@ static inline void prio_copyscrollbitmap_trans_common(BitmapClass &dest, const B
 	// scrolling rows plus vertical scroll
 	else if (numcols <= 1)
 	{
-		s32 yscroll = normalize_yscroll(src, (numcols == 0) ? 0 : colscroll[0]);
+		s32 yscroll = normalize_yscroll(src.height(), (numcols == 0) ? 0 : colscroll[0]);
 		rectangle subclip = cliprect;
 
 		// determine width of each rows
@@ -2318,7 +2318,7 @@ static inline void prio_copyscrollbitmap_trans_common(BitmapClass &dest, const B
 					break;
 
 			// iterate over reps of the rows in question
-			xscroll = normalize_xscroll(src, xscroll);
+			xscroll = normalize_xscroll(src.width(), xscroll);
 			for (s32 sy = yscroll - src.height(); sy < dest.height(); sy += src.height())
 			{
 				// compute the cliprect for this group
@@ -2357,8 +2357,8 @@ static inline void primask_copyscrollbitmap_trans_common(BitmapClass &dest, cons
 	// fully scrolling X,Y playfield
 	if (numrows <= 1 && numcols <= 1)
 	{
-		s32 xscroll = normalize_xscroll(src, (numrows == 0) ? 0 : rowscroll[0]);
-		s32 yscroll = normalize_yscroll(src, (numcols == 0) ? 0 : colscroll[0]);
+		s32 xscroll = normalize_xscroll(src.width(), (numrows == 0) ? 0 : rowscroll[0]);
+		s32 yscroll = normalize_yscroll(src.height(), (numcols == 0) ? 0 : colscroll[0]);
 
 		// iterate over all portions of the scroll that overlap the destination
 		for (s32 sx = xscroll - src.width(); sx < dest.width(); sx += src.width())
@@ -2369,7 +2369,7 @@ static inline void primask_copyscrollbitmap_trans_common(BitmapClass &dest, cons
 	// scrolling columns plus horizontal scroll
 	else if (numrows <= 1)
 	{
-		s32 xscroll = normalize_xscroll(src, (numrows == 0) ? 0 : rowscroll[0]);
+		s32 xscroll = normalize_xscroll(src.width(), (numrows == 0) ? 0 : rowscroll[0]);
 		rectangle subclip = cliprect;
 
 		// determine width of each column
@@ -2388,7 +2388,7 @@ static inline void primask_copyscrollbitmap_trans_common(BitmapClass &dest, cons
 					break;
 
 			// iterate over reps of the columns in question
-			yscroll = normalize_yscroll(src, yscroll);
+			yscroll = normalize_yscroll(src.height(), yscroll);
 			for (s32 sx = xscroll - src.width(); sx < dest.width(); sx += src.width())
 			{
 				// compute the cliprect for this group
@@ -2405,7 +2405,7 @@ static inline void primask_copyscrollbitmap_trans_common(BitmapClass &dest, cons
 	// scrolling rows plus vertical scroll
 	else if (numcols <= 1)
 	{
-		s32 yscroll = normalize_yscroll(src, (numcols == 0) ? 0 : colscroll[0]);
+		s32 yscroll = normalize_yscroll(src.height(), (numcols == 0) ? 0 : colscroll[0]);
 		rectangle subclip = cliprect;
 
 		// determine width of each rows
@@ -2424,7 +2424,7 @@ static inline void primask_copyscrollbitmap_trans_common(BitmapClass &dest, cons
 					break;
 
 			// iterate over reps of the rows in question
-			xscroll = normalize_xscroll(src, xscroll);
+			xscroll = normalize_xscroll(src.width(), xscroll);
 			for (s32 sy = yscroll - src.height(); sy < dest.height(); sy += src.height())
 			{
 				// compute the cliprect for this group
