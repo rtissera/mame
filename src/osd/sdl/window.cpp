@@ -95,7 +95,8 @@ bool sdl_osd_interface::window_init()
 	switch (video_config.mode)
 	{
 		case VIDEO_MODE_BGFX:
-			renderer_bgfx::init(machine());
+			// LATER
+			// renderer_bgfx::init(machine());
 			break;
 #if (USE_OPENGL)
 		case VIDEO_MODE_OPENGL:
@@ -665,6 +666,12 @@ int sdl_window_info::complete_create()
 {
 	osd_dim temp(0,0);
 
+	if (SDL_WasInit(SDL_INIT_VIDEO)==0)
+	{
+		osd_printf_verbose("Force SDL_INIT_VIDEO\n");
+		SDL_InitSubSystem(SDL_INIT_VIDEO);
+	}
+
 	// clear out original mode. Needed on OSX
 	if (fullscreen())
 	{
@@ -694,13 +701,21 @@ int sdl_window_info::complete_create()
 	 *
 	 */
 	osd_printf_verbose("Enter sdl_info::create\n");
-	if (renderer().has_flags(osd_renderer::FLAG_NEEDS_OPENGL) && !video_config.novideo)
+	//if (renderer().has_flags(osd_renderer::FLAG_NEEDS_OPENGL) && !video_config.novideo)
 	{
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+                SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+                SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+                SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+                SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
+                SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 		SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-		m_extra_flags = SDL_WINDOW_OPENGL;
+		m_extra_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
 	}
-	else
-		m_extra_flags = 0;
+	//else
+	//	m_extra_flags = 0;
 
 	// We need to workaround an issue in SDL 2.0.4 for OS X where setting the
 	// relative mode on the mouse in fullscreen mode makes mouse events stop
@@ -746,6 +761,19 @@ int sdl_window_info::complete_create()
 			osd_printf_error("OpenGL not supported on this driver: %s\n", SDL_GetError());
 		else
 			osd_printf_error("Window creation failed: %s\n", SDL_GetError());
+		return 1;
+	}
+
+	SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
+        SDL_GLContext context = SDL_GL_CreateContext(sdlwindow);
+	if (context == nullptr )
+	{
+		osd_printf_error("GL context creation failed: %s\n", SDL_GetError());
+		return 1;
+	}
+	if (SDL_GL_MakeCurrent(sdlwindow, context) < 0)
+	{
+		osd_printf_error("GL context setup failed: %s\n", SDL_GetError());
 		return 1;
 	}
 
@@ -810,6 +838,8 @@ int sdl_window_info::complete_create()
 	monitor()->refresh();
 	if (fullscreen() && video_config.switchres)
 		monitor()->update_resolution(temp.width(), temp.height());
+
+	renderer_bgfx::init(machine());
 
 	// initialize the drawing backend
 	if (renderer().create())

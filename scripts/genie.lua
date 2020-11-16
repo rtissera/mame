@@ -1205,6 +1205,10 @@ configuration { "linux-* or rpi or ci20"}
 		links {
 			"dl",
 			"rt",
+                        "EGL",
+                        "GLESv1_CM",
+                        "GLESv2",
+                        "SDL2",
 		}
 		if _OPTIONS["distro"]=="debian-stable" then
 			defines

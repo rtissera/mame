@@ -16,6 +16,15 @@
 			|| BX_PLATFORM_WINDOWS                        \
 			) )
 
+#if BGFX_USE_EGL && BGFX_CONFIG_SDL2
+#	undef BGFX_USE_EGL
+#	define BGFX_USE_EGL 0
+#endif
+
+#define BGFX_USE_SDL2 (BGFX_CONFIG_RENDERER_OPENGLES && (0 \
+	|| BGFX_CONFIG_SDL2                                \
+	) )
+
 #define BGFX_USE_HTML5 (BGFX_CONFIG_RENDERER_OPENGLES && (0 \
 			|| BX_PLATFORM_EMSCRIPTEN                     \
 			) )
@@ -128,9 +137,13 @@ typedef uint64_t GLuint64;
 #		include "glcontext_egl.h"
 #	endif // BGFX_USE_EGL
 
+#	if BGFX_USE_SDL2
+#		include "glcontext_sdl2.h"
+#	endif // BGFX_USE_SDL2
+
 #	if BGFX_USE_HTML5
 #		include "glcontext_html5.h"
-#	endif // BGFX_USE_EGL
+#	endif // BGFX_USE_HTML5
 
 #	if BX_PLATFORM_EMSCRIPTEN
 #		include <emscripten/emscripten.h>

@@ -64,6 +64,12 @@ function bgfxProjectBase(_kind, _defines)
 			buildoptions {
 				"-fPIC",
 			}
+			links {
+				"SDL2",
+				"EGL",
+				"GLESv2",
+				"pthread",
+			}
 
 		configuration {}
 	end

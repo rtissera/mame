@@ -6510,11 +6510,13 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 		}
 		PrimInfo prim = s_primInfo[primIndex];
 
+		/* HACK SDL2 GLES
 		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK
 			, _render->m_debug&BGFX_DEBUG_WIREFRAME
 			? GL_LINE
 			: GL_FILL
 			) );
+		*/
 
 		bool wasCompute = false;
 		bool viewHasScissor = false;

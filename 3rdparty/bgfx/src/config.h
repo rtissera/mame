@@ -8,9 +8,20 @@
 
 #include <bx/bx.h>
 
+// # Configuration options for bgfx.
+//
+// Any of `BGFX_CONFIG_*` options that's inside `#ifndef` block can be configured externally
+// via compiler options.
+//
+// When selecting rendering backends select all backends you want to include in the build.
+
 #ifndef BGFX_CONFIG_DEBUG
 #	define BGFX_CONFIG_DEBUG 0
 #endif // BGFX_CONFIG_DEBUG
+
+#ifndef BGFX_CONFIG_SDL2
+#	define BGFX_CONFIG_SDL2 1
+#endif // BGFX_CONFIG_SDL2
 
 #if !defined(BGFX_CONFIG_RENDERER_DIRECT3D9)  \
  && !defined(BGFX_CONFIG_RENDERER_DIRECT3D11) \
@@ -74,6 +85,10 @@
 					|| BX_PLATFORM_OSX        \
 					|| BX_PLATFORM_WINDOWS    \
 					? BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION : 0)
+#	if BGFX_CONFIG_SDL2
+#		undef  BGFX_CONFIG_RENDERER_OPENGL
+#		define BGFX_CONFIG_RENDERER_OPENGL 0
+#	endif
 #	endif // BGFX_CONFIG_RENDERER_OPENGL
 
 #	ifndef BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION
@@ -88,6 +103,7 @@
 					|| BX_PLATFORM_RPI          \
 					|| BX_PLATFORM_STEAMLINK    \
 					|| BX_PLATFORM_NX           \
+					|| BGFX_CONFIG_SDL2         \
 					? BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION : 0)
 #	endif // BGFX_CONFIG_RENDERER_OPENGLES
 
