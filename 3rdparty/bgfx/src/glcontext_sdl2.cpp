@@ -21,9 +21,9 @@ namespace bgfx { namespace gl
 		SwapChainGL(SDL_Window* _window, SDL_GLContext _context)
 			: m_window(_window)
 		{
-			SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
+			//SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
 			m_context = SDL_GL_CreateContext(m_window);
-			SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
+			//SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
 			BX_CHECK(NULL != m_context, "Create swap chain failed: %s", SDL_GetError() );
 
 			makeCurrent();
@@ -37,7 +37,6 @@ namespace bgfx { namespace gl
 
 		~SwapChainGL()
 		{
-            		//EGLSurface defaultSurface = eglGetCurrentSurface(EGL_DRAW);
             		SDL_GLContext defaultContext = SDL_GL_GetCurrentContext();
 			SDL_GL_MakeCurrent(m_window, 0);
 			SDL_GL_DeleteContext(m_context);
@@ -63,12 +62,14 @@ namespace bgfx { namespace gl
 		BX_UNUSED(_width, _height);
 		m_window = (SDL_Window*)g_platformData.nwh;
 		BGFX_FATAL(m_window != NULL, Fatal::UnableToInitialize, "Failed to retrieve SDL2/GLES window");
-		SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
+
+		//SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
 		m_context = SDL_GL_CreateContext(m_window);
 		BGFX_FATAL(m_context != NULL, Fatal::UnableToInitialize, "Failed to create context.");
 		int success = SDL_GL_MakeCurrent(m_window, m_context);
-		if (success != 0)
-			BX_TRACE("cannot set sdl/gl context %s", SDL_GetError());
+		BGFX_FATAL(success == 0, Fatal::UnableToInitialize, "Failed to set SDL/GL context");
+		//SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
+
 		m_current = NULL;
 		SDL_GL_SetSwapInterval(0);
 		import();
@@ -87,15 +88,11 @@ namespace bgfx { namespace gl
 
 	void GlContext::resize(uint32_t _width, uint32_t _height, uint32_t _flags)
 	{
-#	if BX_PLATFORM_EMSCRIPTEN
-		EMSCRIPTEN_CHECK(emscripten_set_canvas_element_size(HTML5_TARGET_CANVAS_SELECTOR, _width, _height) );
-#	else
 		if (NULL != m_window)
 		{
 			SDL_SetWindowSize(m_window, _width, _height);
 		}
 		BX_UNUSED(_width, _height);
-#	endif // BX_PLATFORM_*
 
 		if (NULL != m_window)
 		{
@@ -106,14 +103,7 @@ namespace bgfx { namespace gl
 
 	uint64_t GlContext::getCaps() const
 	{
-		return BX_ENABLED(0
-						| BX_PLATFORM_LINUX
-						| BX_PLATFORM_WINDOWS
-						| BX_PLATFORM_ANDROID
-						)
-			? BGFX_CAPS_SWAP_CHAIN
-			: 0
-			;
+		return BGFX_CAPS_SWAP_CHAIN;
 	}
 
 	SwapChainGL* GlContext::createSwapChain(void* _nwh)

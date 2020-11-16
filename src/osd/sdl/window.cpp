@@ -711,7 +711,6 @@ int sdl_window_info::complete_create()
                 SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
                 SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
                 SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-		SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
 		m_extra_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
 	}
 	//else
@@ -761,19 +760,6 @@ int sdl_window_info::complete_create()
 			osd_printf_error("OpenGL not supported on this driver: %s\n", SDL_GetError());
 		else
 			osd_printf_error("Window creation failed: %s\n", SDL_GetError());
-		return 1;
-	}
-
-	SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-        SDL_GLContext context = SDL_GL_CreateContext(sdlwindow);
-	if (context == nullptr )
-	{
-		osd_printf_error("GL context creation failed: %s\n", SDL_GetError());
-		return 1;
-	}
-	if (SDL_GL_MakeCurrent(sdlwindow, context) < 0)
-	{
-		osd_printf_error("GL context setup failed: %s\n", SDL_GetError());
 		return 1;
 	}
 
