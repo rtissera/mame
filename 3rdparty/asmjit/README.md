@@ -24,8 +24,8 @@ Breaking the API is sometimes inevitable, what to do?
   * See [Breaking Changes Guide](https://asmjit.com/doc/group__asmjit__breaking__changes.html), which is now part of AsmJit documentation.
   * See asmjit tests, they always compile and provide implementation of many use-cases:
     * [asmjit_test_x86_asm.cpp](./test/asmjit_test_x86_asm.cpp) - Tests that demonstrate the purpose of emitters.
-    * [asmjit_test_x86_cc.cpp](./test/asmjit_test_x86_cc.cpp) - A lot of tests targeting Compiler infrastructure.
     * [asmjit_test_x86_sections.cpp](./test/asmjit_test_x86_sections.cpp) - Multiple sections test.
+    * [asmjit_test_compiler_x86.cpp](./test/asmjit_test_compiler_x86.cpp) - Tests targeting AsmJit's Compiler (x86/x64).
   * Visit our [Official Chat](https://gitter.im/asmjit/asmjit) if you need a quick help.
 
 Project Organization
@@ -44,12 +44,21 @@ TODO
 ----
 
   * [ ] Core:
-    * [ ] Add support for user external buffers in CodeHolder.
+    * [ ] Add support for user external buffers in CodeBuffer / CodeHolder.
+    * [ ] Register allocator doesn't understand register pairs, affected instructions:
+      * [ ] v4fmaddps, v4fmaddss, v4fnmaddps, v4fnmaddss
+      * [ ] vp4dpwssd, vp4dpwssds
+      * [ ] vp2intersectd, vp2intersectq
   * [ ] Ports:
     * [ ] ARM/Thumb/AArch64 support.
 
-Donors
-------
+Support
+-------
+
+  * AsmJit project has both community and commercial support, see [AsmJit's Support Page](https://asmjit.com/support.html)
+  * You can help the development and maintenance through Petr Kobalicek's [GitHub sponsors Profile](https://github.com/sponsors/kobalicek)
+
+Notable Donors List:
 
   * [ZehMatt](https://github.com/ZehMatt)
 

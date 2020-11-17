@@ -69,13 +69,7 @@ BaseBuilder::BaseBuilder() noexcept
     _codeZone(32768 - Zone::kBlockOverhead),
     _dataZone(16384 - Zone::kBlockOverhead),
     _passZone(65536 - Zone::kBlockOverhead),
-    _allocator(&_codeZone),
-    _passes(),
-    _labelNodes(),
-    _cursor(nullptr),
-    _firstNode(nullptr),
-    _lastNode(nullptr),
-    _nodeFlags(0) {}
+    _allocator(&_codeZone) {}
 
 BaseBuilder::~BaseBuilder() noexcept {
   BaseBuilder_deletePasses(this);
@@ -731,13 +725,26 @@ Error BaseBuilder::embedConstPool(const Label& label, const ConstPool& pool) {
   return kErrorOk;
 }
 
-Error BaseBuilder::embedLabel(const Label& label) {
+// EmbedLabel / EmbedLabelDelta
+// ----------------------------
+//
+// If dataSize is zero it means that the size is the same as target register
+// width, however, if it's provided we really want to validate whether it's
+// within the possible range.
+
+static inline bool BaseBuilder_checkDataSize(size_t dataSize) noexcept {
+  return !dataSize || (Support::isPowerOf2(dataSize) && dataSize <= 8);
+}
+
+Error BaseBuilder::embedLabel(const Label& label, size_t dataSize) {
   if (ASMJIT_UNLIKELY(!_code))
     return DebugUtils::errored(kErrorNotInitialized);
 
+  if (!BaseBuilder_checkDataSize(dataSize))
+    return reportError(DebugUtils::errored(kErrorInvalidArgument));
 
   EmbedLabelNode* node;
-  ASMJIT_PROPAGATE(_newNodeT<EmbedLabelNode>(&node, label.id()));
+  ASMJIT_PROPAGATE(_newNodeT<EmbedLabelNode>(&node, label.id(), uint32_t(dataSize)));
 
   addNode(node);
   return kErrorOk;
@@ -747,10 +754,7 @@ Error BaseBuilder::embedLabelDelta(const Label& label, const Label& base, size_t
   if (ASMJIT_UNLIKELY(!_code))
     return DebugUtils::errored(kErrorNotInitialized);
 
-  // If dataSize is zero it means that the size is the same as target register
-  // width, however, if it's provided we really want to validate whether it's
-  // within the possible range.
-  if (dataSize && (!Support::isPowerOf2(dataSize) || dataSize > 8))
+  if (!BaseBuilder_checkDataSize(dataSize))
     return reportError(DebugUtils::errored(kErrorInvalidArgument));
 
   EmbedLabelDeltaNode* node;
@@ -779,7 +783,7 @@ Error BaseBuilder::comment(const char* data, size_t size) {
 // [asmjit::BaseBuilder - Serialize]
 // ============================================================================
 
-Error BaseBuilder::serialize(BaseEmitter* dst) {
+Error BaseBuilder::serializeTo(BaseEmitter* dst) {
   Error err = kErrorOk;
   BaseNode* node_ = _firstNode;
 
@@ -836,7 +840,7 @@ Error BaseBuilder::serialize(BaseEmitter* dst) {
     }
     else if (node_->isEmbedLabel()) {
       EmbedLabelNode* node = node_->as<EmbedLabelNode>();
-      err = dst->embedLabel(node->label());
+      err = dst->embedLabel(node->label(), node->dataSize());
     }
     else if (node_->isEmbedLabelDelta()) {
       EmbedLabelDeltaNode* node = node_->as<EmbedLabelDeltaNode>();
@@ -908,8 +912,7 @@ Error BaseBuilder::onDetach(CodeHolder* code) noexcept {
 // ============================================================================
 
 Pass::Pass(const char* name) noexcept
-  : _cb(nullptr),
-    _name(name) {}
+  : _name(name) {}
 Pass::~Pass() noexcept {}
 
 ASMJIT_END_NAMESPACE

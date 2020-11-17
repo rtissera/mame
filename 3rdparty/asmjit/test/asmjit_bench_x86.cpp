@@ -21,14 +21,19 @@
 //    misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
+#include <asmjit/core.h>
+
+#ifdef ASMJIT_BUILD_X86
 #include <asmjit/x86.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 
-#include "./asmjit_test_opcode.h"
+#include "asmjit_test_opcode.h"
 
 #ifndef ASMJIT_NO_COMPILER
-  #include "./asmjit_test_misc.h"
+  #include "asmjit_test_misc.h"
 #endif
 
 using namespace asmjit;

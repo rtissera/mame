@@ -239,7 +239,7 @@ namespace asmjit {
 //!
 //!   - \ref ASMJIT_BUILD_X86 - Always build X86 backend (X86 and X86_64).
 //!   - \ref ASMJIT_BUILD_ARM - Always build ARM backend (ARM and AArch64).
-//!   - \ref ASMJIT_BUILD_HOST - Always build the host backend, implied by default.
+//!   - \ref ASMJIT_BUILD_HOST - Always build the host backend.
 //!
 //! ### Features Selection
 //!
@@ -251,6 +251,9 @@ namespace asmjit {
 //!     so it won't be available and the compilation will fail if there is
 //!     attempt to use such API. This includes deprecated classes, namespaces,
 //!     enumerations, and functions.
+//!
+//!   - \ref ASMJIT_NO_FOREIGN - Disables the support for foreign architectures.
+//!     If defined, it would internally set \ref ASMJIT_BUILD_HOST to true.
 //!
 //!   - \ref ASMJIT_NO_BUILDER - Disables \ref asmjit_builder functionality
 //!     completely. This implies \ref ASMJIT_NO_COMPILER as \ref asmjit_compiler
@@ -867,7 +870,8 @@ namespace asmjit {
 //!     ".data",  // Section name
 //!     SIZE_MAX, // Name length if the name is not null terminated (or SIZE_MAX).
 //!     0,        // Section flags, see Section::Flags.
-//!     8);       // Section alignment, must be power of 2.
+//!     8,        // Section alignment, must be power of 2.
+//!     0);       // Section order value (optional, default 0).
 //!
 //!   // When you switch sections in Assembler, Builder, or Compiler the cursor
 //!   // will always move to the end of that section. When you create an Assembler
@@ -2001,41 +2005,41 @@ namespace asmjit {
 // [Core Headers]
 // ============================================================================
 
-#include "./core/globals.h"
-
-#include "./core/arch.h"
-#include "./core/assembler.h"
-#include "./core/builder.h"
-#include "./core/callconv.h"
-#include "./core/codeholder.h"
-#include "./core/compiler.h"
-#include "./core/constpool.h"
-#include "./core/cpuinfo.h"
-#include "./core/datatypes.h"
-#include "./core/emitter.h"
-#include "./core/environment.h"
-#include "./core/errorhandler.h"
-#include "./core/features.h"
-#include "./core/formatter.h"
-#include "./core/func.h"
-#include "./core/inst.h"
-#include "./core/jitallocator.h"
-#include "./core/jitruntime.h"
-#include "./core/logger.h"
-#include "./core/operand.h"
-#include "./core/osutils.h"
-#include "./core/string.h"
-#include "./core/support.h"
-#include "./core/target.h"
-#include "./core/type.h"
-#include "./core/virtmem.h"
-#include "./core/zone.h"
-#include "./core/zonehash.h"
-#include "./core/zonelist.h"
-#include "./core/zonetree.h"
-#include "./core/zonestack.h"
-#include "./core/zonestring.h"
-#include "./core/zonevector.h"
+#include "asmjit-scope-begin.h"
+#include "core/archtraits.h"
+#include "core/assembler.h"
+#include "core/builder.h"
+#include "core/codeholder.h"
+#include "core/compiler.h"
+#include "core/constpool.h"
+#include "core/cpuinfo.h"
+#include "core/datatypes.h"
+#include "core/emitter.h"
+#include "core/environment.h"
+#include "core/errorhandler.h"
+#include "core/features.h"
+#include "core/formatter.h"
+#include "core/func.h"
+#include "core/globals.h"
+#include "core/inst.h"
+#include "core/jitallocator.h"
+#include "core/jitruntime.h"
+#include "core/logger.h"
+#include "core/operand.h"
+#include "core/osutils.h"
+#include "core/string.h"
+#include "core/support.h"
+#include "core/target.h"
+#include "core/type.h"
+#include "core/virtmem.h"
+#include "core/zone.h"
+#include "core/zonehash.h"
+#include "core/zonelist.h"
+#include "core/zonetree.h"
+#include "core/zonestack.h"
+#include "core/zonestring.h"
+#include "core/zonevector.h"
+#include "asmjit-scope-end.h"
 
 // ============================================================================
 // [Deprecated]

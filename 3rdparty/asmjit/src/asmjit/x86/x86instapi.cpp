@@ -126,61 +126,64 @@ struct X86ValidationData {
   uint32_t allowedMemIndexRegs;
 };
 
-#define VALUE(X) \
-  (X == Reg::kTypeGpbLo) ? InstDB::kOpGpbLo : \
-  (X == Reg::kTypeGpbHi) ? InstDB::kOpGpbHi : \
-  (X == Reg::kTypeGpw  ) ? InstDB::kOpGpw   : \
-  (X == Reg::kTypeGpd  ) ? InstDB::kOpGpd   : \
-  (X == Reg::kTypeGpq  ) ? InstDB::kOpGpq   : \
-  (X == Reg::kTypeXmm  ) ? InstDB::kOpXmm   : \
-  (X == Reg::kTypeYmm  ) ? InstDB::kOpYmm   : \
-  (X == Reg::kTypeZmm  ) ? InstDB::kOpZmm   : \
-  (X == Reg::kTypeMm   ) ? InstDB::kOpMm    : \
-  (X == Reg::kTypeKReg ) ? InstDB::kOpKReg  : \
-  (X == Reg::kTypeSReg ) ? InstDB::kOpSReg  : \
-  (X == Reg::kTypeCReg ) ? InstDB::kOpCReg  : \
-  (X == Reg::kTypeDReg ) ? InstDB::kOpDReg  : \
-  (X == Reg::kTypeSt   ) ? InstDB::kOpSt    : \
-  (X == Reg::kTypeBnd  ) ? InstDB::kOpBnd   : \
-  (X == Reg::kTypeRip  ) ? InstDB::kOpNone  : InstDB::kOpNone
+#define VALUE(x) \
+  (x == Reg::kTypeGpbLo) ? InstDB::kOpGpbLo : \
+  (x == Reg::kTypeGpbHi) ? InstDB::kOpGpbHi : \
+  (x == Reg::kTypeGpw  ) ? InstDB::kOpGpw   : \
+  (x == Reg::kTypeGpd  ) ? InstDB::kOpGpd   : \
+  (x == Reg::kTypeGpq  ) ? InstDB::kOpGpq   : \
+  (x == Reg::kTypeXmm  ) ? InstDB::kOpXmm   : \
+  (x == Reg::kTypeYmm  ) ? InstDB::kOpYmm   : \
+  (x == Reg::kTypeZmm  ) ? InstDB::kOpZmm   : \
+  (x == Reg::kTypeMm   ) ? InstDB::kOpMm    : \
+  (x == Reg::kTypeKReg ) ? InstDB::kOpKReg  : \
+  (x == Reg::kTypeSReg ) ? InstDB::kOpSReg  : \
+  (x == Reg::kTypeCReg ) ? InstDB::kOpCReg  : \
+  (x == Reg::kTypeDReg ) ? InstDB::kOpDReg  : \
+  (x == Reg::kTypeSt   ) ? InstDB::kOpSt    : \
+  (x == Reg::kTypeBnd  ) ? InstDB::kOpBnd   : \
+  (x == Reg::kTypeTmm  ) ? InstDB::kOpTmm   : \
+  (x == Reg::kTypeRip  ) ? InstDB::kOpNone  : InstDB::kOpNone
 static const uint32_t _x86OpFlagFromRegType[Reg::kTypeMax + 1] = { ASMJIT_LOOKUP_TABLE_32(VALUE, 0) };
 #undef VALUE
 
-#define REG_MASK_FROM_REG_TYPE_X86(X) \
-  (X == Reg::kTypeGpbLo) ? 0x0000000Fu : \
-  (X == Reg::kTypeGpbHi) ? 0x0000000Fu : \
-  (X == Reg::kTypeGpw  ) ? 0x000000FFu : \
-  (X == Reg::kTypeGpd  ) ? 0x000000FFu : \
-  (X == Reg::kTypeGpq  ) ? 0x000000FFu : \
-  (X == Reg::kTypeXmm  ) ? 0x000000FFu : \
-  (X == Reg::kTypeYmm  ) ? 0x000000FFu : \
-  (X == Reg::kTypeZmm  ) ? 0x000000FFu : \
-  (X == Reg::kTypeMm   ) ? 0x000000FFu : \
-  (X == Reg::kTypeKReg ) ? 0x000000FFu : \
-  (X == Reg::kTypeSReg ) ? 0x0000007Eu : \
-  (X == Reg::kTypeCReg ) ? 0x0000FFFFu : \
-  (X == Reg::kTypeDReg ) ? 0x000000FFu : \
-  (X == Reg::kTypeSt   ) ? 0x000000FFu : \
-  (X == Reg::kTypeBnd  ) ? 0x0000000Fu : \
-  (X == Reg::kTypeRip  ) ? 0x00000001u : 0u
+#define REG_MASK_FROM_REG_TYPE_X86(x) \
+  (x == Reg::kTypeGpbLo) ? 0x0000000Fu : \
+  (x == Reg::kTypeGpbHi) ? 0x0000000Fu : \
+  (x == Reg::kTypeGpw  ) ? 0x000000FFu : \
+  (x == Reg::kTypeGpd  ) ? 0x000000FFu : \
+  (x == Reg::kTypeGpq  ) ? 0x000000FFu : \
+  (x == Reg::kTypeXmm  ) ? 0x000000FFu : \
+  (x == Reg::kTypeYmm  ) ? 0x000000FFu : \
+  (x == Reg::kTypeZmm  ) ? 0x000000FFu : \
+  (x == Reg::kTypeMm   ) ? 0x000000FFu : \
+  (x == Reg::kTypeKReg ) ? 0x000000FFu : \
+  (x == Reg::kTypeSReg ) ? 0x0000007Eu : \
+  (x == Reg::kTypeCReg ) ? 0x0000FFFFu : \
+  (x == Reg::kTypeDReg ) ? 0x000000FFu : \
+  (x == Reg::kTypeSt   ) ? 0x000000FFu : \
+  (x == Reg::kTypeBnd  ) ? 0x0000000Fu : \
+  (x == Reg::kTypeTmm  ) ? 0x000000FFu : \
+  (x == Reg::kTypeRip  ) ? 0x00000001u : 0u
 
-#define REG_MASK_FROM_REG_TYPE_X64(X) \
-  (X == Reg::kTypeGpbLo) ? 0x0000FFFFu : \
-  (X == Reg::kTypeGpbHi) ? 0x0000000Fu : \
-  (X == Reg::kTypeGpw  ) ? 0x0000FFFFu : \
-  (X == Reg::kTypeGpd  ) ? 0x0000FFFFu : \
-  (X == Reg::kTypeGpq  ) ? 0x0000FFFFu : \
-  (X == Reg::kTypeXmm  ) ? 0xFFFFFFFFu : \
-  (X == Reg::kTypeYmm  ) ? 0xFFFFFFFFu : \
-  (X == Reg::kTypeZmm  ) ? 0xFFFFFFFFu : \
-  (X == Reg::kTypeMm   ) ? 0x000000FFu : \
-  (X == Reg::kTypeKReg ) ? 0x000000FFu : \
-  (X == Reg::kTypeSReg ) ? 0x0000007Eu : \
-  (X == Reg::kTypeCReg ) ? 0x0000FFFFu : \
-  (X == Reg::kTypeDReg ) ? 0x0000FFFFu : \
-  (X == Reg::kTypeSt   ) ? 0x000000FFu : \
-  (X == Reg::kTypeBnd  ) ? 0x0000000Fu : \
-  (X == Reg::kTypeRip  ) ? 0x00000001u : 0u
+#define REG_MASK_FROM_REG_TYPE_X64(x) \
+  (x == Reg::kTypeGpbLo) ? 0x0000FFFFu : \
+  (x == Reg::kTypeGpbHi) ? 0x0000000Fu : \
+  (x == Reg::kTypeGpw  ) ? 0x0000FFFFu : \
+  (x == Reg::kTypeGpd  ) ? 0x0000FFFFu : \
+  (x == Reg::kTypeGpq  ) ? 0x0000FFFFu : \
+  (x == Reg::kTypeXmm  ) ? 0xFFFFFFFFu : \
+  (x == Reg::kTypeYmm  ) ? 0xFFFFFFFFu : \
+  (x == Reg::kTypeZmm  ) ? 0xFFFFFFFFu : \
+  (x == Reg::kTypeMm   ) ? 0x000000FFu : \
+  (x == Reg::kTypeKReg ) ? 0x000000FFu : \
+  (x == Reg::kTypeSReg ) ? 0x0000007Eu : \
+  (x == Reg::kTypeCReg ) ? 0x0000FFFFu : \
+  (x == Reg::kTypeDReg ) ? 0x0000FFFFu : \
+  (x == Reg::kTypeSt   ) ? 0x000000FFu : \
+  (x == Reg::kTypeBnd  ) ? 0x0000000Fu : \
+  (x == Reg::kTypeTmm  ) ? 0x000000FFu : \
+  (x == Reg::kTypeRip  ) ? 0x00000001u : 0u
 
 static const X86ValidationData _x86ValidationData = {
   { ASMJIT_LOOKUP_TABLE_32(REG_MASK_FROM_REG_TYPE_X86, 0) },
@@ -821,13 +824,15 @@ Error InstInternal::queryRWInfo(uint32_t arch, const BaseInst& inst, const Opera
   const InstDB::CommonInfoTableB& tabB = InstDB::_commonInfoTableB[InstDB::_instInfoTable[instId]._commonInfoIndexB];
   const InstDB::RWFlagsInfoTable& rwFlags = InstDB::_rwFlagsInfoTable[tabB._rwFlagsIndex];
 
-  // Each RWInfo contains two indexes
-  //   [0] - OpCount == 2
-  //   [1] - OpCount != 2
-  // They are used this way as there are instructions that have 2 and 3
-  // operand overloads that use different semantics. So instead of adding
-  // more special cases we just separated their data tables.
-  const InstDB::RWInfo& instRwInfo = InstDB::rwInfo[InstDB::rwInfoIndex[instId * 2u + uint32_t(opCount != 2)]];
+
+  // There are two data tables, one for `opCount == 2` and the second for
+  // `opCount != 2`. There are two reasons for that:
+  //   - There are instructions that share the same name that have both 2
+  //     or 3 operands, which have different RW information / semantics.
+  //   - There must be 2 tables otherwise the lookup index won't fit into
+  //     8 bits (there is more than 256 records of combined rwInfo A and B).
+  const InstDB::RWInfo& instRwInfo = opCount == 2 ? InstDB::rwInfoA[InstDB::rwInfoIndexA[instId]]
+                                                  : InstDB::rwInfoB[InstDB::rwInfoIndexB[instId]];
   const InstDB::RWInfoRm& instRmInfo = InstDB::rwInfoRm[instRwInfo.rmInfo];
 
   out->_instFlags = 0;
@@ -846,7 +851,7 @@ Error InstInternal::queryRWInfo(uint32_t arch, const BaseInst& inst, const Opera
   constexpr uint32_t RegPhys = OpRWInfo::kRegPhysId;
   constexpr uint32_t MibRead = OpRWInfo::kMemBaseRead | OpRWInfo::kMemIndexRead;
 
-  if (ASMJIT_LIKELY(instRwInfo.category == InstDB::RWInfo::kCategoryGeneric)) {
+  if (instRwInfo.category == InstDB::RWInfo::kCategoryGeneric) {
     uint32_t i;
     uint32_t rmOpsMask = 0;
     uint32_t rmMaxSize = 0;
@@ -896,7 +901,13 @@ Error InstInternal::queryRWInfo(uint32_t arch, const BaseInst& inst, const Opera
         rmOpsMask |= Support::bitMask<uint32_t>(i);
       }
       else {
-        op.addOpFlags(MibRead);
+        const x86::Mem& memOp = srcOp.as<x86::Mem>();
+        // The RW flags of BASE+INDEX are either provided by the data, which means
+        // that the instruction is border-case, or they are deduced from the operand.
+        if (memOp.hasBaseReg() && !(op.opFlags() & OpRWInfo::kMemBaseRW))
+          op.addOpFlags(OpRWInfo::kMemBaseRead);
+        if (memOp.hasIndexReg() && !(op.opFlags() & OpRWInfo::kMemIndexRW))
+          op.addOpFlags(OpRWInfo::kMemIndexRead);
       }
     }
 

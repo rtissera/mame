@@ -24,7 +24,7 @@
 #ifndef ASMJIT_X86_X86OPERAND_H_INCLUDED
 #define ASMJIT_X86_X86OPERAND_H_INCLUDED
 
-#include "../core/arch.h"
+#include "../core/archtraits.h"
 #include "../core/operand.h"
 #include "../core/type.h"
 #include "../x86/x86globals.h"
@@ -61,23 +61,23 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
   }                                                                                   \
                                                                                       \
   static constexpr Mem FUNC##_abs(uint64_t base) noexcept {                           \
-    return Mem(base, SIZE, BaseMem::kSignatureMemAbs);                                \
+    return Mem(base, SIZE, Mem::kSignatureMemAbs);                                    \
   }                                                                                   \
   static constexpr Mem FUNC##_abs(uint64_t base, const Gp& index, uint32_t shift = 0) noexcept { \
-    return Mem(base, index, shift, SIZE, BaseMem::kSignatureMemAbs);                  \
+    return Mem(base, index, shift, SIZE, Mem::kSignatureMemAbs);                      \
   }                                                                                   \
   static constexpr Mem FUNC##_abs(uint64_t base, const Vec& index, uint32_t shift = 0) noexcept { \
-    return Mem(base, index, shift, SIZE, BaseMem::kSignatureMemAbs);                  \
+    return Mem(base, index, shift, SIZE, Mem::kSignatureMemAbs);                      \
   }                                                                                   \
                                                                                       \
   static constexpr Mem FUNC##_rel(uint64_t base) noexcept {                           \
-    return Mem(base, SIZE, BaseMem::kSignatureMemRel);                                \
+    return Mem(base, SIZE, Mem::kSignatureMemRel);                                    \
   }                                                                                   \
   static constexpr Mem FUNC##_rel(uint64_t base, const Gp& index, uint32_t shift = 0) noexcept { \
-    return Mem(base, index, shift, SIZE, BaseMem::kSignatureMemRel);                  \
+    return Mem(base, index, shift, SIZE, Mem::kSignatureMemRel);                      \
   }                                                                                   \
   static constexpr Mem FUNC##_rel(uint64_t base, const Vec& index, uint32_t shift = 0) noexcept { \
-    return Mem(base, index, shift, SIZE, BaseMem::kSignatureMemRel);                  \
+    return Mem(base, index, shift, SIZE, Mem::kSignatureMemRel);                      \
   }
 
 //! \addtogroup asmjit_x86
@@ -108,6 +108,7 @@ class CReg;
 class DReg;
 class St;
 class Bnd;
+class Tmm;
 class Rip;
 
 // ============================================================================
@@ -142,7 +143,8 @@ ASMJIT_DEFINE_REG_TRAITS(CReg , BaseReg::kTypeCustom + 1, BaseReg::kGroupVirt + 
 ASMJIT_DEFINE_REG_TRAITS(DReg , BaseReg::kTypeCustom + 2, BaseReg::kGroupVirt + 2, 0 , 16, Type::kIdVoid  );
 ASMJIT_DEFINE_REG_TRAITS(St   , BaseReg::kTypeCustom + 3, BaseReg::kGroupVirt + 3, 10, 8 , Type::kIdF80   );
 ASMJIT_DEFINE_REG_TRAITS(Bnd  , BaseReg::kTypeCustom + 4, BaseReg::kGroupVirt + 4, 16, 4 , Type::kIdVoid  );
-ASMJIT_DEFINE_REG_TRAITS(Rip  , BaseReg::kTypeIP        , BaseReg::kGroupVirt + 5, 0 , 1 , Type::kIdVoid  );
+ASMJIT_DEFINE_REG_TRAITS(Tmm  , BaseReg::kTypeCustom + 5, BaseReg::kGroupVirt + 5, 0 , 8 , Type::kIdVoid  );
+ASMJIT_DEFINE_REG_TRAITS(Rip  , BaseReg::kTypeIP        , BaseReg::kGroupVirt + 6, 0 , 1 , Type::kIdVoid  );
 //! \endcond
 
 //! Register (X86).
@@ -152,77 +154,116 @@ public:
 
   //! Register type.
   enum RegType : uint32_t {
-    kTypeNone  = BaseReg::kTypeNone,     //!< No register type or invalid register.
-    kTypeGpbLo = BaseReg::kTypeGp8Lo,    //!< Low GPB register (AL, BL, CL, DL, ...).
-    kTypeGpbHi = BaseReg::kTypeGp8Hi,    //!< High GPB register (AH, BH, CH, DH only).
-    kTypeGpw   = BaseReg::kTypeGp16,     //!< GPW register.
-    kTypeGpd   = BaseReg::kTypeGp32,     //!< GPD register.
-    kTypeGpq   = BaseReg::kTypeGp64,     //!< GPQ register (64-bit).
-    kTypeXmm   = BaseReg::kTypeVec128,   //!< XMM register (SSE+).
-    kTypeYmm   = BaseReg::kTypeVec256,   //!< YMM register (AVX+).
-    kTypeZmm   = BaseReg::kTypeVec512,   //!< ZMM register (AVX512+).
-    kTypeMm    = BaseReg::kTypeOther0,   //!< MMX register.
-    kTypeKReg  = BaseReg::kTypeOther1,   //!< K register (AVX512+).
-    kTypeSReg  = BaseReg::kTypeCustom+0, //!< Segment register (None, ES, CS, SS, DS, FS, GS).
-    kTypeCReg  = BaseReg::kTypeCustom+1, //!< Control register (CR).
-    kTypeDReg  = BaseReg::kTypeCustom+2, //!< Debug register (DR).
-    kTypeSt    = BaseReg::kTypeCustom+3, //!< FPU (x87) register.
-    kTypeBnd   = BaseReg::kTypeCustom+4, //!< Bound register (BND).
-    kTypeRip   = BaseReg::kTypeIP,       //!< Instruction pointer (EIP, RIP).
-    kTypeCount = BaseReg::kTypeCustom+5  //!< Count of register types.
+    //! No register type or invalid register.
+    kTypeNone = BaseReg::kTypeNone,
+
+    //! Low GPB register (AL, BL, CL, DL, ...).
+    kTypeGpbLo = BaseReg::kTypeGp8Lo,
+    //! High GPB register (AH, BH, CH, DH only).
+    kTypeGpbHi = BaseReg::kTypeGp8Hi,
+    //! GPW register.
+    kTypeGpw = BaseReg::kTypeGp16,
+    //! GPD register.
+    kTypeGpd = BaseReg::kTypeGp32,
+    //! GPQ register (64-bit).
+    kTypeGpq = BaseReg::kTypeGp64,
+    //! XMM register (SSE+).
+    kTypeXmm = BaseReg::kTypeVec128,
+    //! YMM register (AVX+).
+    kTypeYmm = BaseReg::kTypeVec256,
+    //! ZMM register (AVX512+).
+    kTypeZmm = BaseReg::kTypeVec512,
+    //! MMX register.
+    kTypeMm = BaseReg::kTypeOther0,
+    //! K register (AVX512+).
+    kTypeKReg = BaseReg::kTypeOther1,
+    //! Instruction pointer (EIP, RIP).
+    kTypeRip = BaseReg::kTypeIP,
+    //! Segment register (None, ES, CS, SS, DS, FS, GS).
+    kTypeSReg = BaseReg::kTypeCustom + 0,
+    //! Control register (CR).
+    kTypeCReg = BaseReg::kTypeCustom + 1,
+    //! Debug register (DR).
+    kTypeDReg = BaseReg::kTypeCustom + 2,
+    //! FPU (x87) register.
+    kTypeSt = BaseReg::kTypeCustom + 3,
+    //! Bound register (BND).
+    kTypeBnd = BaseReg::kTypeCustom + 4,
+    //! TMM register (AMX_TILE)
+    kTypeTmm = BaseReg::kTypeCustom + 5,
+
+    //! Count of register types.
+    kTypeCount = BaseReg::kTypeCustom + 6
   };
 
   //! Register group.
   enum RegGroup : uint32_t {
-    kGroupGp   = BaseReg::kGroupGp,      //!< GP register group or none (universal).
-    kGroupVec  = BaseReg::kGroupVec,     //!< XMM|YMM|ZMM register group (universal).
-    kGroupMm   = BaseReg::kGroupOther0,  //!< MMX register group (legacy).
-    kGroupKReg = BaseReg::kGroupOther1,  //!< K register group.
+    //! GP register group or none (universal).
+    kGroupGp   = BaseReg::kGroupGp,
+    //! XMM|YMM|ZMM register group (universal).
+    kGroupVec  = BaseReg::kGroupVec,
+    //! MMX register group (legacy).
+    kGroupMm   = BaseReg::kGroupOther0,
+    //! K register group.
+    kGroupKReg = BaseReg::kGroupOther1,
 
-    // These are not managed by BaseCompiler nor used by Func-API:
-    kGroupSReg = BaseReg::kGroupVirt+0,  //!< Segment register group.
-    kGroupCReg = BaseReg::kGroupVirt+1,  //!< Control register group.
-    kGroupDReg = BaseReg::kGroupVirt+2,  //!< Debug register group.
-    kGroupSt   = BaseReg::kGroupVirt+3,  //!< FPU register group.
-    kGroupBnd  = BaseReg::kGroupVirt+4,  //!< Bound register group.
-    kGroupRip  = BaseReg::kGroupVirt+5,  //!< Instrucion pointer (IP).
-    kGroupCount                          //!< Count of all register groups.
+    // These are not managed by Compiler nor used by Func-API:
+
+    //! Segment register group.
+    kGroupSReg = BaseReg::kGroupVirt+0,
+    //! Control register group.
+    kGroupCReg = BaseReg::kGroupVirt+1,
+    //! Debug register group.
+    kGroupDReg = BaseReg::kGroupVirt+2,
+    //! FPU register group.
+    kGroupSt   = BaseReg::kGroupVirt+3,
+    //! Bound register group.
+    kGroupBnd  = BaseReg::kGroupVirt+4,
+    //! TMM register group.
+    kGroupTmm  = BaseReg::kGroupVirt+5,
+    //! Instrucion pointer (IP).
+    kGroupRip  = BaseReg::kGroupVirt+6,
+
+    //! Count of all register groups.
+    kGroupCount
   };
 
   //! Tests whether the register is a GPB register (8-bit).
   constexpr bool isGpb() const noexcept { return size() == 1; }
   //! Tests whether the register is a low GPB register (8-bit).
-  constexpr bool isGpbLo() const noexcept { return hasSignature(RegTraits<kTypeGpbLo>::kSignature); }
+  constexpr bool isGpbLo() const noexcept { return hasBaseSignature(RegTraits<kTypeGpbLo>::kSignature); }
   //! Tests whether the register is a high GPB register (8-bit).
-  constexpr bool isGpbHi() const noexcept { return hasSignature(RegTraits<kTypeGpbHi>::kSignature); }
+  constexpr bool isGpbHi() const noexcept { return hasBaseSignature(RegTraits<kTypeGpbHi>::kSignature); }
   //! Tests whether the register is a GPW register (16-bit).
-  constexpr bool isGpw() const noexcept { return hasSignature(RegTraits<kTypeGpw>::kSignature); }
+  constexpr bool isGpw() const noexcept { return hasBaseSignature(RegTraits<kTypeGpw>::kSignature); }
   //! Tests whether the register is a GPD register (32-bit).
-  constexpr bool isGpd() const noexcept { return hasSignature(RegTraits<kTypeGpd>::kSignature); }
+  constexpr bool isGpd() const noexcept { return hasBaseSignature(RegTraits<kTypeGpd>::kSignature); }
   //! Tests whether the register is a GPQ register (64-bit).
-  constexpr bool isGpq() const noexcept { return hasSignature(RegTraits<kTypeGpq>::kSignature); }
+  constexpr bool isGpq() const noexcept { return hasBaseSignature(RegTraits<kTypeGpq>::kSignature); }
   //! Tests whether the register is an XMM register (128-bit).
-  constexpr bool isXmm() const noexcept { return hasSignature(RegTraits<kTypeXmm>::kSignature); }
+  constexpr bool isXmm() const noexcept { return hasBaseSignature(RegTraits<kTypeXmm>::kSignature); }
   //! Tests whether the register is a YMM register (256-bit).
-  constexpr bool isYmm() const noexcept { return hasSignature(RegTraits<kTypeYmm>::kSignature); }
+  constexpr bool isYmm() const noexcept { return hasBaseSignature(RegTraits<kTypeYmm>::kSignature); }
   //! Tests whether the register is a ZMM register (512-bit).
-  constexpr bool isZmm() const noexcept { return hasSignature(RegTraits<kTypeZmm>::kSignature); }
+  constexpr bool isZmm() const noexcept { return hasBaseSignature(RegTraits<kTypeZmm>::kSignature); }
   //! Tests whether the register is an MMX register (64-bit).
-  constexpr bool isMm() const noexcept { return hasSignature(RegTraits<kTypeMm>::kSignature); }
+  constexpr bool isMm() const noexcept { return hasBaseSignature(RegTraits<kTypeMm>::kSignature); }
   //! Tests whether the register is a K register (64-bit).
-  constexpr bool isKReg() const noexcept { return hasSignature(RegTraits<kTypeKReg>::kSignature); }
+  constexpr bool isKReg() const noexcept { return hasBaseSignature(RegTraits<kTypeKReg>::kSignature); }
   //! Tests whether the register is a segment register.
-  constexpr bool isSReg() const noexcept { return hasSignature(RegTraits<kTypeSReg>::kSignature); }
+  constexpr bool isSReg() const noexcept { return hasBaseSignature(RegTraits<kTypeSReg>::kSignature); }
   //! Tests whether the register is a control register.
-  constexpr bool isCReg() const noexcept { return hasSignature(RegTraits<kTypeCReg>::kSignature); }
+  constexpr bool isCReg() const noexcept { return hasBaseSignature(RegTraits<kTypeCReg>::kSignature); }
   //! Tests whether the register is a debug register.
-  constexpr bool isDReg() const noexcept { return hasSignature(RegTraits<kTypeDReg>::kSignature); }
+  constexpr bool isDReg() const noexcept { return hasBaseSignature(RegTraits<kTypeDReg>::kSignature); }
   //! Tests whether the register is an FPU register (80-bit).
-  constexpr bool isSt() const noexcept { return hasSignature(RegTraits<kTypeSt>::kSignature); }
+  constexpr bool isSt() const noexcept { return hasBaseSignature(RegTraits<kTypeSt>::kSignature); }
   //! Tests whether the register is a bound register.
-  constexpr bool isBnd() const noexcept { return hasSignature(RegTraits<kTypeBnd>::kSignature); }
+  constexpr bool isBnd() const noexcept { return hasBaseSignature(RegTraits<kTypeBnd>::kSignature); }
+  //! Tests whether the register is a TMM register.
+  constexpr bool isTmm() const noexcept { return hasBaseSignature(RegTraits<kTypeTmm>::kSignature); }
   //! Tests whether the register is RIP.
-  constexpr bool isRip() const noexcept { return hasSignature(RegTraits<kTypeRip>::kSignature); }
+  constexpr bool isRip() const noexcept { return hasBaseSignature(RegTraits<kTypeRip>::kSignature); }
 
   template<uint32_t REG_TYPE>
   inline void setRegT(uint32_t rId) noexcept {
@@ -236,15 +277,16 @@ public:
     setId(rId);
   }
 
-  static inline uint32_t groupOf(uint32_t rType) noexcept;
+  static inline uint32_t groupOf(uint32_t rType) noexcept { return _archTraits[Environment::kArchX86].regTypeToGroup(rType); }
+  static inline uint32_t typeIdOf(uint32_t rType) noexcept { return _archTraits[Environment::kArchX86].regTypeToTypeId(rType); }
+  static inline uint32_t signatureOf(uint32_t rType) noexcept { return _archTraits[Environment::kArchX86].regTypeToSignature(rType); }
+
   template<uint32_t REG_TYPE>
   static inline uint32_t groupOfT() noexcept { return RegTraits<REG_TYPE>::kGroup; }
 
-  static inline uint32_t typeIdOf(uint32_t rType) noexcept;
   template<uint32_t REG_TYPE>
   static inline uint32_t typeIdOfT() noexcept { return RegTraits<REG_TYPE>::kTypeId; }
 
-  static inline uint32_t signatureOf(uint32_t rType) noexcept;
   template<uint32_t REG_TYPE>
   static inline uint32_t signatureOfT() noexcept { return RegTraits<REG_TYPE>::kSignature; }
 
@@ -261,9 +303,9 @@ public:
   //! Tests whether the `op` operand is either a low or high 8-bit GPB register.
   static inline bool isGpb(const Operand_& op) noexcept {
     // Check operand type, register group, and size. Not interested in register type.
-    const uint32_t kSgn = (Operand::kOpReg << kSignatureOpShift  ) |
-                          (1               << kSignatureSizeShift) ;
-    return (op.signature() & (kSignatureOpMask | kSignatureSizeMask)) == kSgn;
+    const uint32_t kSgn = (Operand::kOpReg << kSignatureOpTypeShift) |
+                          (1               << kSignatureSizeShift  ) ;
+    return (op.signature() & (kSignatureOpTypeMask | kSignatureSizeMask)) == kSgn;
   }
 
   static inline bool isGpbLo(const Operand_& op) noexcept { return op.as<Reg>().isGpbLo(); }
@@ -281,6 +323,7 @@ public:
   static inline bool isDReg(const Operand_& op) noexcept { return op.as<Reg>().isDReg(); }
   static inline bool isSt(const Operand_& op) noexcept { return op.as<Reg>().isSt(); }
   static inline bool isBnd(const Operand_& op) noexcept { return op.as<Reg>().isBnd(); }
+  static inline bool isTmm(const Operand_& op) noexcept { return op.as<Reg>().isTmm(); }
   static inline bool isRip(const Operand_& op) noexcept { return op.as<Reg>().isRip(); }
 
   static inline bool isGpb(const Operand_& op, uint32_t rId) noexcept { return isGpb(op) & (op.id() == rId); }
@@ -299,6 +342,7 @@ public:
   static inline bool isDReg(const Operand_& op, uint32_t rId) noexcept { return isDReg(op) & (op.id() == rId); }
   static inline bool isSt(const Operand_& op, uint32_t rId) noexcept { return isSt(op) & (op.id() == rId); }
   static inline bool isBnd(const Operand_& op, uint32_t rId) noexcept { return isBnd(op) & (op.id() == rId); }
+  static inline bool isTmm(const Operand_& op, uint32_t rId) noexcept { return isTmm(op) & (op.id() == rId); }
   static inline bool isRip(const Operand_& op, uint32_t rId) noexcept { return isRip(op) & (op.id() == rId); }
 };
 
@@ -358,7 +402,7 @@ class Vec : public Reg {
 
   //! Casts this register to a register that has half the size (or XMM if it's already XMM).
   inline Vec half() const noexcept {
-    return Vec(type() == kTypeZmm ? signatureOf(kTypeYmm) : signatureOf(kTypeXmm), id());
+    return Vec::fromSignatureAndId(type() == kTypeZmm ? signatureOfT<kTypeYmm>() : signatureOfT<kTypeXmm>(), id());
   }
 };
 
@@ -368,19 +412,26 @@ class SReg : public Reg {
 
   //! X86 segment id.
   enum Id : uint32_t {
-    kIdNone = 0, //!< No segment (default).
-    kIdEs   = 1, //!< ES segment.
-    kIdCs   = 2, //!< CS segment.
-    kIdSs   = 3, //!< SS segment.
-    kIdDs   = 4, //!< DS segment.
-    kIdFs   = 5, //!< FS segment.
-    kIdGs   = 6, //!< GS segment.
+    //! No segment (default).
+    kIdNone = 0,
+    //! ES segment.
+    kIdEs = 1,
+    //! CS segment.
+    kIdCs = 2,
+    //! SS segment.
+    kIdSs = 3,
+    //! DS segment.
+    kIdDs = 4,
+    //! FS segment.
+    kIdFs = 5,
+    //! GS segment.
+    kIdGs = 6,
 
-    //! Count of  segment registers supported by AsmJit.
+    //! Count of X86 segment registers supported by AsmJit.
     //!
     //! \note X86 architecture has 6 segment registers - ES, CS, SS, DS, FS, GS.
     //! X64 architecture lowers them down to just FS and GS. AsmJit supports 7
-    //! segment registers - all addressable in both  and X64 modes and one
+    //! segment registers - all addressable in both X86 and X64 modes and one
     //! extra called `SReg::kIdNone`, which is AsmJit specific and means that
     //! there is no segment register specified.
     kIdCount = 7
@@ -433,6 +484,8 @@ class DReg : public Reg { ASMJIT_DEFINE_FINAL_REG(DReg, Reg, RegTraits<kTypeDReg
 class St : public Reg { ASMJIT_DEFINE_FINAL_REG(St, Reg, RegTraits<kTypeSt>) };
 //! 128-bit BND register (BND+).
 class Bnd : public Reg { ASMJIT_DEFINE_FINAL_REG(Bnd, Reg, RegTraits<kTypeBnd>) };
+//! 8192-bit TMM register (AMX).
+class Tmm : public Reg { ASMJIT_DEFINE_FINAL_REG(Tmm, Reg, RegTraits<kTypeTmm>) };
 //! RIP register (X86).
 class Rip : public Reg { ASMJIT_DEFINE_FINAL_REG(Rip, Reg, RegTraits<kTypeRip>) };
 
@@ -489,79 +542,81 @@ static constexpr DReg dr(uint32_t rId) noexcept { return DReg(rId); }
 static constexpr St st(uint32_t rId) noexcept { return St(rId); }
 //! Creates a 128-bit bound register operand.
 static constexpr Bnd bnd(uint32_t rId) noexcept { return Bnd(rId); }
+//! Creates a TMM register operand.
+static constexpr Tmm tmm(uint32_t rId) noexcept { return Tmm(rId); }
 
-static constexpr Gp al = Gp(GpbLo::kSignature, Gp::kIdAx);
-static constexpr Gp bl = Gp(GpbLo::kSignature, Gp::kIdBx);
-static constexpr Gp cl = Gp(GpbLo::kSignature, Gp::kIdCx);
-static constexpr Gp dl = Gp(GpbLo::kSignature, Gp::kIdDx);
-static constexpr Gp spl = Gp(GpbLo::kSignature, Gp::kIdSp);
-static constexpr Gp bpl = Gp(GpbLo::kSignature, Gp::kIdBp);
-static constexpr Gp sil = Gp(GpbLo::kSignature, Gp::kIdSi);
-static constexpr Gp dil = Gp(GpbLo::kSignature, Gp::kIdDi);
-static constexpr Gp r8b = Gp(GpbLo::kSignature, Gp::kIdR8);
-static constexpr Gp r9b = Gp(GpbLo::kSignature, Gp::kIdR9);
-static constexpr Gp r10b = Gp(GpbLo::kSignature, Gp::kIdR10);
-static constexpr Gp r11b = Gp(GpbLo::kSignature, Gp::kIdR11);
-static constexpr Gp r12b = Gp(GpbLo::kSignature, Gp::kIdR12);
-static constexpr Gp r13b = Gp(GpbLo::kSignature, Gp::kIdR13);
-static constexpr Gp r14b = Gp(GpbLo::kSignature, Gp::kIdR14);
-static constexpr Gp r15b = Gp(GpbLo::kSignature, Gp::kIdR15);
+static constexpr Gp al = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdAx));
+static constexpr Gp bl = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdBx));
+static constexpr Gp cl = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdCx));
+static constexpr Gp dl = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdDx));
+static constexpr Gp spl = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdSp));
+static constexpr Gp bpl = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdBp));
+static constexpr Gp sil = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdSi));
+static constexpr Gp dil = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdDi));
+static constexpr Gp r8b = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdR8));
+static constexpr Gp r9b = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdR9));
+static constexpr Gp r10b = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdR10));
+static constexpr Gp r11b = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdR11));
+static constexpr Gp r12b = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdR12));
+static constexpr Gp r13b = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdR13));
+static constexpr Gp r14b = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdR14));
+static constexpr Gp r15b = Gp(Gp::SignatureAndId(GpbLo::kSignature, Gp::kIdR15));
 
-static constexpr Gp ah = Gp(GpbHi::kSignature, Gp::kIdAx);
-static constexpr Gp bh = Gp(GpbHi::kSignature, Gp::kIdBx);
-static constexpr Gp ch = Gp(GpbHi::kSignature, Gp::kIdCx);
-static constexpr Gp dh = Gp(GpbHi::kSignature, Gp::kIdDx);
+static constexpr Gp ah = Gp(Gp::SignatureAndId(GpbHi::kSignature, Gp::kIdAx));
+static constexpr Gp bh = Gp(Gp::SignatureAndId(GpbHi::kSignature, Gp::kIdBx));
+static constexpr Gp ch = Gp(Gp::SignatureAndId(GpbHi::kSignature, Gp::kIdCx));
+static constexpr Gp dh = Gp(Gp::SignatureAndId(GpbHi::kSignature, Gp::kIdDx));
 
-static constexpr Gp ax = Gp(Gpw::kSignature, Gp::kIdAx);
-static constexpr Gp bx = Gp(Gpw::kSignature, Gp::kIdBx);
-static constexpr Gp cx = Gp(Gpw::kSignature, Gp::kIdCx);
-static constexpr Gp dx = Gp(Gpw::kSignature, Gp::kIdDx);
-static constexpr Gp sp = Gp(Gpw::kSignature, Gp::kIdSp);
-static constexpr Gp bp = Gp(Gpw::kSignature, Gp::kIdBp);
-static constexpr Gp si = Gp(Gpw::kSignature, Gp::kIdSi);
-static constexpr Gp di = Gp(Gpw::kSignature, Gp::kIdDi);
-static constexpr Gp r8w = Gp(Gpw::kSignature, Gp::kIdR8);
-static constexpr Gp r9w = Gp(Gpw::kSignature, Gp::kIdR9);
-static constexpr Gp r10w = Gp(Gpw::kSignature, Gp::kIdR10);
-static constexpr Gp r11w = Gp(Gpw::kSignature, Gp::kIdR11);
-static constexpr Gp r12w = Gp(Gpw::kSignature, Gp::kIdR12);
-static constexpr Gp r13w = Gp(Gpw::kSignature, Gp::kIdR13);
-static constexpr Gp r14w = Gp(Gpw::kSignature, Gp::kIdR14);
-static constexpr Gp r15w = Gp(Gpw::kSignature, Gp::kIdR15);
+static constexpr Gp ax = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdAx));
+static constexpr Gp bx = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdBx));
+static constexpr Gp cx = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdCx));
+static constexpr Gp dx = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdDx));
+static constexpr Gp sp = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdSp));
+static constexpr Gp bp = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdBp));
+static constexpr Gp si = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdSi));
+static constexpr Gp di = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdDi));
+static constexpr Gp r8w = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdR8));
+static constexpr Gp r9w = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdR9));
+static constexpr Gp r10w = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdR10));
+static constexpr Gp r11w = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdR11));
+static constexpr Gp r12w = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdR12));
+static constexpr Gp r13w = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdR13));
+static constexpr Gp r14w = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdR14));
+static constexpr Gp r15w = Gp(Gp::SignatureAndId(Gpw::kSignature, Gp::kIdR15));
 
-static constexpr Gp eax = Gp(Gpd::kSignature, Gp::kIdAx);
-static constexpr Gp ebx = Gp(Gpd::kSignature, Gp::kIdBx);
-static constexpr Gp ecx = Gp(Gpd::kSignature, Gp::kIdCx);
-static constexpr Gp edx = Gp(Gpd::kSignature, Gp::kIdDx);
-static constexpr Gp esp = Gp(Gpd::kSignature, Gp::kIdSp);
-static constexpr Gp ebp = Gp(Gpd::kSignature, Gp::kIdBp);
-static constexpr Gp esi = Gp(Gpd::kSignature, Gp::kIdSi);
-static constexpr Gp edi = Gp(Gpd::kSignature, Gp::kIdDi);
-static constexpr Gp r8d = Gp(Gpd::kSignature, Gp::kIdR8);
-static constexpr Gp r9d = Gp(Gpd::kSignature, Gp::kIdR9);
-static constexpr Gp r10d = Gp(Gpd::kSignature, Gp::kIdR10);
-static constexpr Gp r11d = Gp(Gpd::kSignature, Gp::kIdR11);
-static constexpr Gp r12d = Gp(Gpd::kSignature, Gp::kIdR12);
-static constexpr Gp r13d = Gp(Gpd::kSignature, Gp::kIdR13);
-static constexpr Gp r14d = Gp(Gpd::kSignature, Gp::kIdR14);
-static constexpr Gp r15d = Gp(Gpd::kSignature, Gp::kIdR15);
+static constexpr Gp eax = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdAx));
+static constexpr Gp ebx = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdBx));
+static constexpr Gp ecx = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdCx));
+static constexpr Gp edx = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdDx));
+static constexpr Gp esp = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdSp));
+static constexpr Gp ebp = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdBp));
+static constexpr Gp esi = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdSi));
+static constexpr Gp edi = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdDi));
+static constexpr Gp r8d = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdR8));
+static constexpr Gp r9d = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdR9));
+static constexpr Gp r10d = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdR10));
+static constexpr Gp r11d = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdR11));
+static constexpr Gp r12d = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdR12));
+static constexpr Gp r13d = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdR13));
+static constexpr Gp r14d = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdR14));
+static constexpr Gp r15d = Gp(Gp::SignatureAndId(Gpd::kSignature, Gp::kIdR15));
 
-static constexpr Gp rax = Gp(Gpq::kSignature, Gp::kIdAx);
-static constexpr Gp rbx = Gp(Gpq::kSignature, Gp::kIdBx);
-static constexpr Gp rcx = Gp(Gpq::kSignature, Gp::kIdCx);
-static constexpr Gp rdx = Gp(Gpq::kSignature, Gp::kIdDx);
-static constexpr Gp rsp = Gp(Gpq::kSignature, Gp::kIdSp);
-static constexpr Gp rbp = Gp(Gpq::kSignature, Gp::kIdBp);
-static constexpr Gp rsi = Gp(Gpq::kSignature, Gp::kIdSi);
-static constexpr Gp rdi = Gp(Gpq::kSignature, Gp::kIdDi);
-static constexpr Gp r8 = Gp(Gpq::kSignature, Gp::kIdR8);
-static constexpr Gp r9 = Gp(Gpq::kSignature, Gp::kIdR9);
-static constexpr Gp r10 = Gp(Gpq::kSignature, Gp::kIdR10);
-static constexpr Gp r11 = Gp(Gpq::kSignature, Gp::kIdR11);
-static constexpr Gp r12 = Gp(Gpq::kSignature, Gp::kIdR12);
-static constexpr Gp r13 = Gp(Gpq::kSignature, Gp::kIdR13);
-static constexpr Gp r14 = Gp(Gpq::kSignature, Gp::kIdR14);
-static constexpr Gp r15 = Gp(Gpq::kSignature, Gp::kIdR15);
+static constexpr Gp rax = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdAx));
+static constexpr Gp rbx = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdBx));
+static constexpr Gp rcx = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdCx));
+static constexpr Gp rdx = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdDx));
+static constexpr Gp rsp = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdSp));
+static constexpr Gp rbp = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdBp));
+static constexpr Gp rsi = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdSi));
+static constexpr Gp rdi = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdDi));
+static constexpr Gp r8 = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdR8));
+static constexpr Gp r9 = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdR9));
+static constexpr Gp r10 = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdR10));
+static constexpr Gp r11 = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdR11));
+static constexpr Gp r12 = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdR12));
+static constexpr Gp r13 = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdR13));
+static constexpr Gp r14 = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdR14));
+static constexpr Gp r15 = Gp(Gp::SignatureAndId(Gpq::kSignature, Gp::kIdR15));
 
 static constexpr Xmm xmm0 = Xmm(0);
 static constexpr Xmm xmm1 = Xmm(1);
@@ -736,6 +791,15 @@ static constexpr Bnd bnd1 = Bnd(1);
 static constexpr Bnd bnd2 = Bnd(2);
 static constexpr Bnd bnd3 = Bnd(3);
 
+static constexpr Tmm tmm0 = Tmm(0);
+static constexpr Tmm tmm1 = Tmm(1);
+static constexpr Tmm tmm2 = Tmm(2);
+static constexpr Tmm tmm3 = Tmm(3);
+static constexpr Tmm tmm4 = Tmm(4);
+static constexpr Tmm tmm5 = Tmm(5);
+static constexpr Tmm tmm6 = Tmm(6);
+static constexpr Tmm tmm7 = Tmm(7);
+
 static constexpr Rip rip = Rip(0);
 
 #ifndef _DOXYGEN
@@ -752,27 +816,64 @@ using namespace regs;
 //! Memory operand.
 class Mem : public BaseMem {
 public:
-  //! Additional bits of operand's signature used by `Mem`.
+  //! Additional bits of operand's signature used by `x86::Mem`.
   enum AdditionalBits : uint32_t {
-    kSignatureMemSegmentShift   = 16,
-    kSignatureMemSegmentMask    = 0x07u << kSignatureMemSegmentShift,
+    // Memory address type (2 bits).
+    // |........|........|XX......|........|
+    kSignatureMemAddrTypeShift = 14,
+    kSignatureMemAddrTypeMask = 0x03u << kSignatureMemAddrTypeShift,
 
-    kSignatureMemShiftShift     = 19,
-    kSignatureMemShiftMask      = 0x03u << kSignatureMemShiftShift,
+    // Memory shift amount (2 bits).
+    // |........|......XX|........|........|
+    kSignatureMemShiftValueShift = 16,
+    kSignatureMemShiftValueMask = 0x03u << kSignatureMemShiftValueShift,
 
+    // Memory segment reg (3 bits).
+    // |........|...XXX..|........|........|
+    kSignatureMemSegmentShift = 18,
+    kSignatureMemSegmentMask = 0x07u << kSignatureMemSegmentShift,
+
+    // Memory broadcast type (3 bits).
+    // |........|XXX.....|........|........|
     kSignatureMemBroadcastShift = 21,
-    kSignatureMemBroadcastMask  = 0x7u << kSignatureMemBroadcastShift
+    kSignatureMemBroadcastMask = 0x7u << kSignatureMemBroadcastShift
   };
 
+  //! Address type.
+  enum AddrType : uint32_t {
+    //! Default address type, Assembler will select the best type when necessary.
+    kAddrTypeDefault = 0,
+    //! Absolute address type.
+    kAddrTypeAbs = 1,
+    //! Relative address type.
+    kAddrTypeRel = 2
+  };
+
+  //! Memory broadcast type.
   enum Broadcast : uint32_t {
+    //! Broadcast {1to1}.
     kBroadcast1To1 = 0,
+    //! Broadcast {1to2}.
     kBroadcast1To2 = 1,
+    //! Broadcast {1to4}.
     kBroadcast1To4 = 2,
+    //! Broadcast {1to8}.
     kBroadcast1To8 = 3,
+    //! Broadcast {1to16}.
     kBroadcast1To16 = 4,
+    //! Broadcast {1to32}.
     kBroadcast1To32 = 5,
+    //! Broadcast {1to64}.
     kBroadcast1To64 = 6
   };
+
+  //! \cond
+  //! Shortcuts.
+  enum SignatureMem : uint32_t {
+    kSignatureMemAbs = kAddrTypeAbs << kSignatureMemAddrTypeShift,
+    kSignatureMemRel = kAddrTypeRel << kSignatureMemAddrTypeShift
+  };
+  //! \endcond
 
   // --------------------------------------------------------------------------
   // [Construction / Destruction]
@@ -796,19 +897,19 @@ public:
     : BaseMem(Decomposed { Label::kLabelTag, base.id(), 0, 0, off, size, flags }) {}
 
   constexpr Mem(const Label& base, const BaseReg& index, uint32_t shift, int32_t off, uint32_t size = 0, uint32_t flags = 0) noexcept
-    : BaseMem(Decomposed { Label::kLabelTag, base.id(), index.type(), index.id(), off, size, flags | (shift << kSignatureMemShiftShift) }) {}
+    : BaseMem(Decomposed { Label::kLabelTag, base.id(), index.type(), index.id(), off, size, flags | (shift << kSignatureMemShiftValueShift) }) {}
 
   constexpr Mem(const BaseReg& base, int32_t off, uint32_t size = 0, uint32_t flags = 0) noexcept
     : BaseMem(Decomposed { base.type(), base.id(), 0, 0, off, size, flags }) {}
 
   constexpr Mem(const BaseReg& base, const BaseReg& index, uint32_t shift, int32_t off, uint32_t size = 0, uint32_t flags = 0) noexcept
-    : BaseMem(Decomposed { base.type(), base.id(), index.type(), index.id(), off, size, flags | (shift << kSignatureMemShiftShift) }) {}
+    : BaseMem(Decomposed { base.type(), base.id(), index.type(), index.id(), off, size, flags | (shift << kSignatureMemShiftValueShift) }) {}
 
   constexpr explicit Mem(uint64_t base, uint32_t size = 0, uint32_t flags = 0) noexcept
     : BaseMem(Decomposed { 0, uint32_t(base >> 32), 0, 0, int32_t(uint32_t(base & 0xFFFFFFFFu)), size, flags }) {}
 
   constexpr Mem(uint64_t base, const BaseReg& index, uint32_t shift = 0, uint32_t size = 0, uint32_t flags = 0) noexcept
-    : BaseMem(Decomposed { 0, uint32_t(base >> 32), index.type(), index.id(), int32_t(uint32_t(base & 0xFFFFFFFFu)), size, flags | (shift << kSignatureMemShiftShift) }) {}
+    : BaseMem(Decomposed { 0, uint32_t(base >> 32), index.type(), index.id(), int32_t(uint32_t(base & 0xFFFFFFFFu)), size, flags | (shift << kSignatureMemShiftValueShift) }) {}
 
   constexpr Mem(Globals::Init_, uint32_t u0, uint32_t u1, uint32_t u2, uint32_t u3) noexcept
     : BaseMem(Globals::Init, u0, u1, u2, u3) {}
@@ -855,6 +956,25 @@ public:
     setShift(shift);
   }
 
+  //! Returns the address type (see \ref AddrType) of the memory operand.
+  //!
+  //! By default, address type of newly created memory operands is always \ref kAddrTypeDefault.
+  constexpr uint32_t addrType() const noexcept { return _getSignaturePart<kSignatureMemAddrTypeMask>(); }
+  //! Sets the address type to `addrType`, see \ref AddrType.
+  inline void setAddrType(uint32_t addrType) noexcept { _setSignaturePart<kSignatureMemAddrTypeMask>(addrType); }
+  //! Resets the address type to \ref kAddrTypeDefault.
+  inline void resetAddrType() noexcept { _setSignaturePart<kSignatureMemAddrTypeMask>(0); }
+
+  //! Tests whether the address type is \ref kAddrTypeAbs.
+  constexpr bool isAbs() const noexcept { return addrType() == kAddrTypeAbs; }
+  //! Sets the address type to \ref kAddrTypeAbs.
+  inline void setAbs() noexcept { setAddrType(kAddrTypeAbs); }
+
+  //! Tests whether the address type is \ref kAddrTypeRel.
+  constexpr bool isRel() const noexcept { return addrType() == kAddrTypeRel; }
+  //! Sets the address type to \ref kAddrTypeRel.
+  inline void setRel() noexcept { setAddrType(kAddrTypeRel); }
+
   //! Tests whether the memory operand has a segment override.
   constexpr bool hasSegment() const noexcept { return _hasSignaturePart<kSignatureMemSegmentMask>(); }
   //! Returns the associated segment override as `SReg` operand.
@@ -870,13 +990,13 @@ public:
   inline void resetSegment() noexcept { _setSignaturePart<kSignatureMemSegmentMask>(0); }
 
   //! Tests whether the memory operand has shift (aka scale) value.
-  constexpr bool hasShift() const noexcept { return _hasSignaturePart<kSignatureMemShiftMask>(); }
+  constexpr bool hasShift() const noexcept { return _hasSignaturePart<kSignatureMemShiftValueMask>(); }
   //! Returns the memory operand's shift (aka scale) value.
-  constexpr uint32_t shift() const noexcept { return _getSignaturePart<kSignatureMemShiftMask>(); }
+  constexpr uint32_t shift() const noexcept { return _getSignaturePart<kSignatureMemShiftValueMask>(); }
   //! Sets the memory operand's shift (aka scale) value.
-  inline void setShift(uint32_t shift) noexcept { _setSignaturePart<kSignatureMemShiftMask>(shift); }
+  inline void setShift(uint32_t shift) noexcept { _setSignaturePart<kSignatureMemShiftValueMask>(shift); }
   //! Resets the memory operand's shift (aka scale) value to zero.
-  inline void resetShift() noexcept { _setSignaturePart<kSignatureMemShiftMask>(0); }
+  inline void resetShift() noexcept { _setSignaturePart<kSignatureMemShiftValueMask>(0); }
 
   //! Tests whether the memory operand has broadcast {1tox}.
   constexpr bool hasBroadcast() const noexcept { return _hasSignaturePart<kSignatureMemBroadcastMask>(); }
@@ -940,28 +1060,28 @@ static constexpr Mem ptr(uint64_t base, const Vec& index, uint32_t shift = 0, ui
 
 //! Creates `[base]` absolute memory operand (absolute).
 static constexpr Mem ptr_abs(uint64_t base, uint32_t size = 0) noexcept {
-  return Mem(base, size, BaseMem::kSignatureMemAbs);
+  return Mem(base, size, Mem::kSignatureMemAbs);
 }
 //! Creates `[base + (index.reg << shift)]` absolute memory operand (absolute).
 static constexpr Mem ptr_abs(uint64_t base, const Reg& index, uint32_t shift = 0, uint32_t size = 0) noexcept {
-  return Mem(base, index, shift, size, BaseMem::kSignatureMemAbs);
+  return Mem(base, index, shift, size, Mem::kSignatureMemAbs);
 }
 //! Creates `[base + (index.reg << shift)]` absolute memory operand (absolute).
 static constexpr Mem ptr_abs(uint64_t base, const Vec& index, uint32_t shift = 0, uint32_t size = 0) noexcept {
-  return Mem(base, index, shift, size, BaseMem::kSignatureMemAbs);
+  return Mem(base, index, shift, size, Mem::kSignatureMemAbs);
 }
 
 //! Creates `[base]` relative memory operand (relative).
 static constexpr Mem ptr_rel(uint64_t base, uint32_t size = 0) noexcept {
-  return Mem(base, size, BaseMem::kSignatureMemRel);
+  return Mem(base, size, Mem::kSignatureMemRel);
 }
 //! Creates `[base + (index.reg << shift)]` relative memory operand (relative).
 static constexpr Mem ptr_rel(uint64_t base, const Reg& index, uint32_t shift = 0, uint32_t size = 0) noexcept {
-  return Mem(base, index, shift, size, BaseMem::kSignatureMemRel);
+  return Mem(base, index, shift, size, Mem::kSignatureMemRel);
 }
 //! Creates `[base + (index.reg << shift)]` relative memory operand (relative).
 static constexpr Mem ptr_rel(uint64_t base, const Vec& index, uint32_t shift = 0, uint32_t size = 0) noexcept {
-  return Mem(base, index, shift, size, BaseMem::kSignatureMemRel);
+  return Mem(base, index, shift, size, Mem::kSignatureMemRel);
 }
 
 // Definition of memory operand constructors that use platform independent naming.
@@ -987,34 +1107,6 @@ ASMJIT_MEM_PTR(qqword_ptr, 32)
 ASMJIT_MEM_PTR(xmmword_ptr, 16)
 ASMJIT_MEM_PTR(ymmword_ptr, 32)
 ASMJIT_MEM_PTR(zmmword_ptr, 64)
-
-// ============================================================================
-// [asmjit::x86::OpData]
-// ============================================================================
-
-struct OpData {
-  //! Information about all architecture registers.
-  ArchRegs archRegs;
-};
-ASMJIT_VARAPI const OpData opData;
-
-//! \cond
-// ... Reg methods that require `opData`.
-inline uint32_t Reg::groupOf(uint32_t rType) noexcept {
-  ASMJIT_ASSERT(rType <= BaseReg::kTypeMax);
-  return opData.archRegs.regInfo[rType].group();
-}
-
-inline uint32_t Reg::typeIdOf(uint32_t rType) noexcept {
-  ASMJIT_ASSERT(rType <= BaseReg::kTypeMax);
-  return opData.archRegs.regTypeToTypeId[rType];
-}
-
-inline uint32_t Reg::signatureOf(uint32_t rType) noexcept {
-  ASMJIT_ASSERT(rType <= BaseReg::kTypeMax);
-  return opData.archRegs.regInfo[rType].signature();
-}
-//! \endcond
 
 //! \}
 

@@ -65,17 +65,20 @@ namespace asmjit {
 //! \note Can be defined explicitly to bypass autodetection.
 #define ASMJIT_BUILD_RELEASE
 
-//! Defined to build X86/X64 backend.
-#define ASMJIT_BUILD_X86
-
 //! Defined to build ARM/AArch64 backend.
 #define ASMJIT_BUILD_ARM
+
+//! Defined to build X86/X64 backend.
+#define ASMJIT_BUILD_X86
 
 //! Defined to build host backend autodetected at compile-time.
 #define ASMJIT_BUILD_HOST
 
 //! Disables deprecated API at compile time.
 #define ASMJIT_NO_DEPRECATED
+
+//! Disable non-host architectures entirely.
+#define ASMJIT_NO_FOREIGN
 
 //! Disables \ref asmjit_builder functionality completely.
 #define ASMJIT_NO_BUILDER
@@ -100,6 +103,7 @@ namespace asmjit {
 
 // Avoid doxygen preprocessor using feature-selection definitions.
 #undef ASMJIT_NO_DEPRECATED
+#undef ASMJIT_NO_FOREIGN
 #undef ASMJIT_NO_BUILDER
 #undef ASMJIT_NO_COMPILER
 #undef ASMJIT_NO_JIT
@@ -113,6 +117,16 @@ namespace asmjit {
 } // {asmjit}
 #endif // _DOXYGEN
 
+// Enable all features at IDE level, so it's properly highlighted and indexed.
+#ifdef __INTELLISENSE__
+  #ifndef ASMJIT_BUILD_ARM
+    #define ASMJIT_BUILD_ARM
+  #endif
+  #ifndef ASMJIT_BUILD_X86
+    #define ASMJIT_BUILD_X86
+  #endif
+#endif
+
 // ============================================================================
 // [asmjit::Dependencies]
 // ============================================================================
@@ -125,8 +139,9 @@ namespace asmjit {
 #include <stdlib.h>
 #include <string.h>
 
-#include <new>
+#include <iterator>
 #include <limits>
+#include <new>
 #include <type_traits>
 #include <utility>
 
@@ -190,7 +205,7 @@ namespace asmjit {
 #endif
 
 // ============================================================================
-// [asmjit::Build - Globals - Target Architecture]
+// [asmjit::Build - Globals - Target Architecture Information]
 // ============================================================================
 
 #if defined(_M_X64) || defined(__x86_64__)
@@ -237,27 +252,42 @@ namespace asmjit {
   #define ASMJIT_ARCH_BE 0
 #endif
 
-// Build host architecture if no architecture is selected.
-#if !defined(ASMJIT_BUILD_HOST) && \
-    !defined(ASMJIT_BUILD_X86)  && \
-    !defined(ASMJIT_BUILD_ARM)
+// ============================================================================
+// [asmjit::Build - Globals - Build Architectures Definitions]
+// ============================================================================
+
+#if !defined(ASMJIT_NO_FOREIGN)
+  // If 'ASMJIT_NO_FOREIGN' is not defined then all architectures will be built.
+  #if !defined(ASMJIT_BUILD_ARM)
+    #define ASMJIT_BUILD_ARM
+  #endif
+  #if !defined(ASMJIT_BUILD_X86)
+    #define ASMJIT_BUILD_X86
+  #endif
+#else
+  // Detect architectures to build if building only for the host architecture.
+  #if ASMJIT_ARCH_ARM && !defined(ASMJIT_BUILD_ARM)
+    #define ASMJIT_BUILD_ARM
+  #endif
+  #if ASMJIT_ARCH_X86 && !defined(ASMJIT_BUILD_X86)
+    #define ASMJIT_BUILD_X86
+  #endif
+#endif
+
+// Define 'ASMJIT_BUILD_HOST' if we know that host architecture will be built.
+#if !defined(ASMJIT_BUILD_HOST) && ASMJIT_ARCH_ARM && defined(ASMJIT_BUILD_ARM)
   #define ASMJIT_BUILD_HOST
 #endif
 
-// Detect host architecture if building only for host.
-#if ASMJIT_ARCH_X86 && defined(ASMJIT_BUILD_HOST) && !defined(ASMJIT_BUILD_X86)
-  #define ASMJIT_BUILD_X86
-#endif
-
-#if ASMJIT_ARCH_ARM && defined(ASMJIT_BUILD_HOST) && !defined(ASMJIT_BUILD_ARM)
-  #define ASMJIT_BUILD_ARM
+#if !defined(ASMJIT_BUILD_HOST) && ASMJIT_ARCH_X86 && defined(ASMJIT_BUILD_X86)
+  #define ASMJIT_BUILD_HOST
 #endif
 
 // ============================================================================
 // [asmjit::Build - Globals - C++ Compiler and Features Detection]
 // ============================================================================
 
-#define ASMJIT_CXX_GNU   0
+#define ASMJIT_CXX_GNU 0
 #define ASMJIT_CXX_MAKE_VER(MAJOR, MINOR) ((MAJOR) * 1000 + (MINOR))
 
 // Intel Compiler [pretends to be GNU or MSC, so it must be checked first]:
@@ -403,6 +433,17 @@ namespace asmjit {
   #define ASMJIT_MAY_ALIAS __attribute__((__may_alias__))
 #else
   #define ASMJIT_MAY_ALIAS
+#endif
+
+//! \def ASMJIT_MAYBE_UNUSED
+//!
+//! Expands to `[[maybe_unused]]` if supported or a compiler attribute instead.
+#if __cplusplus >= 201703L
+  #define ASMJIT_MAYBE_UNUSED [[maybe_unused]]
+#elif defined(__GNUC__)
+  #define ASMJIT_MAYBE_UNUSED __attribute__((unused))
+#else
+  #define ASMJIT_MAYBE_UNUSED
 #endif
 
 //! \def ASMJIT_LIKELY(...)

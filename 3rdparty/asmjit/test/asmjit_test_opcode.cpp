@@ -31,7 +31,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "./asmjit_test_opcode.h"
+#include "cmdline.h"
+#include "asmjit_test_opcode.h"
 
 using namespace asmjit;
 
@@ -48,7 +49,7 @@ static const char* archToString(uint32_t arch) noexcept {
     case Environment::kArchARM      : return "ARM";
     case Environment::kArchThumb    : return "Thumb";
     case Environment::kArchAArch64  : return "AArch64";
-    case Environment::kArchMIPS_LE  : return "MIPS";
+    case Environment::kArchMIPS32_LE: return "MIPS32";
     case Environment::kArchMIPS64_LE: return "MIPS64";
     default: return "Unknown";
   }
@@ -63,7 +64,8 @@ struct TestErrorHandler : public ErrorHandler {
 
 typedef void (*VoidFunc)(void);
 
-int main() {
+int main(int argc, char* argv[]) {
+  CmdLine cmdLine(argc, argv);
   TestErrorHandler eh;
 
   OpcodeDumpInfo infoList[] = {
@@ -73,6 +75,8 @@ int main() {
     { Environment::kArchX64, true , false },
     { Environment::kArchX64, true , true  }
   };
+
+  bool quiet = cmdLine.hasArg("--quiet");
 
   for (uint32_t i = 0; i < ASMJIT_ARRAY_SIZE(infoList); i++) {
     const OpcodeDumpInfo& info = infoList[i];
@@ -89,7 +93,8 @@ int main() {
 #ifndef ASMJIT_NO_LOGGING
     FileLogger logger(stdout);
     logger.addFlags(FormatOptions::kFlagMachineCode);
-    code.setLogger(&logger);
+    if (!quiet)
+      code.setLogger(&logger);
 #endif
 
     x86::Assembler a(&code);

@@ -21,31 +21,70 @@
 //    misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#ifndef ASMJIT_X86_X86ARCHDATA_P_H_INCLUDED
-#define ASMJIT_X86_X86ARCHDATA_P_H_INCLUDED
+#ifndef ASMJIT_ARM_ARMFORMATTER_P_H_INCLUDED
+#define ASMJIT_ARM_ARMFORMATTER_P_H_INCLUDED
 
-#include "../core/arch.h"
+#include "../core/api-config.h"
+#ifndef ASMJIT_NO_LOGGING
 
-ASMJIT_BEGIN_SUB_NAMESPACE(x86)
+#include "../core/formatter.h"
+#include "../core/string.h"
+#include "../arm/armglobals.h"
+
+ASMJIT_BEGIN_SUB_NAMESPACE(arm)
 
 //! \cond INTERNAL
-//! \addtogroup asmjit_x86
+//! \addtogroup asmjit_arm
 //! \{
 
 // ============================================================================
-// [asmjit::x86::ArchInternal]
+// [asmjit::arm::FormatterInternal]
 // ============================================================================
 
-//! X86-specific function API (calling conventions and other utilities).
-namespace ArchInternal {
+namespace FormatterInternal {
 
-Error typeIdToRegInfo(uint32_t arch, uint32_t typeId, uint32_t* typeIdOut, RegInfo* regInfoOut) noexcept;
+Error formatFeature(
+  String& sb,
+  uint32_t featureId) noexcept;
 
-} // {ArchInternal}
+Error formatCondCode(
+  String& sb,
+  uint32_t condCode) noexcept;
+
+Error formatShiftOp(
+  String& sb,
+  uint32_t shiftOp) noexcept;
+
+Error formatRegister(
+  String& sb,
+  uint32_t flags,
+  const BaseEmitter* emitter,
+  uint32_t arch,
+  uint32_t regType,
+  uint32_t regId,
+  uint32_t elementType = 0,
+  uint32_t elementIndex = 0xFFFFFFFFu) noexcept;
+
+Error formatOperand(
+  String& sb,
+  uint32_t flags,
+  const BaseEmitter* emitter,
+  uint32_t arch,
+  const Operand_& op) noexcept;
+
+Error formatInstruction(
+  String& sb,
+  uint32_t flags,
+  const BaseEmitter* emitter,
+  uint32_t arch,
+  const BaseInst& inst, const Operand_* operands, size_t opCount) noexcept;
+
+} // {FormatterInternal}
 
 //! \}
 //! \endcond
 
 ASMJIT_END_SUB_NAMESPACE
 
-#endif // ASMJIT_X86_X86ARCHDATA_P_H_INCLUDED
+#endif // !ASMJIT_NO_LOGGING
+#endif // ASMJIT_ARM_ARMFORMATTER_P_H_INCLUDED

@@ -24,7 +24,7 @@
 #ifndef ASMJIT_CORE_CODEHOLDER_H_INCLUDED
 #define ASMJIT_CORE_CODEHOLDER_H_INCLUDED
 
-#include "../core/arch.h"
+#include "../core/archtraits.h"
 #include "../core/codebuffer.h"
 #include "../core/datatypes.h"
 #include "../core/errorhandler.h"
@@ -66,118 +66,6 @@ enum AlignMode : uint32_t {
   kAlignZero = 2,
   //! Count of alignment modes.
   kAlignCount = 3
-};
-
-// ============================================================================
-// [asmjit::Section]
-// ============================================================================
-
-//! Section entry.
-class Section {
-public:
-  //! Section id.
-  uint32_t _id;
-  //! Section flags.
-  uint32_t _flags;
-  //! Section alignment requirements (0 if no requirements).
-  uint32_t _alignment;
-  //! Reserved for future use (padding).
-  uint32_t _reserved;
-  //! Offset of this section from base-address.
-  uint64_t _offset;
-  //! Virtual size of the section (zero initialized sections).
-  uint64_t _virtualSize;
-  //! Section name (max 35 characters, PE allows max 8).
-  FixedString<Globals::kMaxSectionNameSize + 1> _name;
-  //! Code or data buffer.
-  CodeBuffer _buffer;
-
-  //! Section flags.
-  enum Flags : uint32_t {
-    //! Executable (.text sections).
-    kFlagExec = 0x00000001u,
-    //! Read-only (.text and .data sections).
-    kFlagConst = 0x00000002u,
-    //! Zero initialized by the loader (BSS).
-    kFlagZero = 0x00000004u,
-    //! Info / comment flag.
-    kFlagInfo = 0x00000008u,
-    //! Section created implicitly and can be deleted by \ref Target.
-    kFlagImplicit = 0x80000000u
-  };
-
-  //! \name Accessors
-  //! \{
-
-  //! Returns the section id.
-  inline uint32_t id() const noexcept { return _id; }
-  //! Returns the section name, as a null terminated string.
-  inline const char* name() const noexcept { return _name.str; }
-
-  //! Returns the section data.
-  inline uint8_t* data() noexcept { return _buffer.data(); }
-  //! \overload
-  inline const uint8_t* data() const noexcept { return _buffer.data(); }
-
-  //! Returns the section flags, see \ref Flags.
-  inline uint32_t flags() const noexcept { return _flags; }
-  //! Tests whether the section has the given `flag`.
-  inline bool hasFlag(uint32_t flag) const noexcept { return (_flags & flag) != 0; }
-  //! Adds `flags` to the section flags.
-  inline void addFlags(uint32_t flags) noexcept { _flags |= flags; }
-  //! Removes `flags` from the section flags.
-  inline void clearFlags(uint32_t flags) noexcept { _flags &= ~flags; }
-
-  //! Returns the minimum section alignment
-  inline uint32_t alignment() const noexcept { return _alignment; }
-  //! Sets the minimum section alignment
-  inline void setAlignment(uint32_t alignment) noexcept { _alignment = alignment; }
-
-  //! Returns the section offset, relative to base.
-  inline uint64_t offset() const noexcept { return _offset; }
-  //! Set the section offset.
-  inline void setOffset(uint64_t offset) noexcept { _offset = offset; }
-
-  //! Returns the virtual size of the section.
-  //!
-  //! Virtual size is initially zero and is never changed by AsmJit. It's normal
-  //! if virtual size is smaller than size returned by `bufferSize()` as the buffer
-  //! stores real data emitted by assemblers or appended by users.
-  //!
-  //! Use `realSize()` to get the real and final size of this section.
-  inline uint64_t virtualSize() const noexcept { return _virtualSize; }
-  //! Sets the virtual size of the section.
-  inline void setVirtualSize(uint64_t virtualSize) noexcept { _virtualSize = virtualSize; }
-
-  //! Returns the buffer size of the section.
-  inline size_t bufferSize() const noexcept { return _buffer.size(); }
-  //! Returns the real size of the section calculated from virtual and buffer sizes.
-  inline uint64_t realSize() const noexcept { return Support::max<uint64_t>(virtualSize(), bufferSize()); }
-
-  //! Returns the `CodeBuffer` used by this section.
-  inline CodeBuffer& buffer() noexcept { return _buffer; }
-  //! Returns the `CodeBuffer` used by this section (const).
-  inline const CodeBuffer& buffer() const noexcept { return _buffer; }
-
-  //! \}
-};
-
-// ============================================================================
-// [asmjit::LabelLink]
-// ============================================================================
-
-//! Data structure used to link either unbound labels or cross-section links.
-struct LabelLink {
-  //! Next link (single-linked list).
-  LabelLink* next;
-  //! Section id where the label is bound.
-  uint32_t sectionId;
-  //! Relocation id or Globals::kInvalidId.
-  uint32_t relocId;
-  //! Label offset relative to the start of the section.
-  size_t offset;
-  //! Inlined rel8/rel32.
-  intptr_t rel;
 };
 
 // ============================================================================
@@ -258,6 +146,320 @@ struct Expression {
 };
 
 // ============================================================================
+// [asmjit::Section]
+// ============================================================================
+
+//! Section entry.
+class Section {
+public:
+  //! Section id.
+  uint32_t _id;
+  //! Section flags.
+  uint32_t _flags;
+  //! Section alignment requirements (0 if no requirements).
+  uint32_t _alignment;
+  //! Order (lower value means higher priority).
+  int32_t _order;
+  //! Offset of this section from base-address.
+  uint64_t _offset;
+  //! Virtual size of the section (zero initialized sections).
+  uint64_t _virtualSize;
+  //! Section name (max 35 characters, PE allows max 8).
+  FixedString<Globals::kMaxSectionNameSize + 1> _name;
+  //! Code or data buffer.
+  CodeBuffer _buffer;
+
+  //! Section flags.
+  enum Flags : uint32_t {
+    //! Executable (.text sections).
+    kFlagExec = 0x00000001u,
+    //! Read-only (.text and .data sections).
+    kFlagConst = 0x00000002u,
+    //! Zero initialized by the loader (BSS).
+    kFlagZero = 0x00000004u,
+    //! Info / comment flag.
+    kFlagInfo = 0x00000008u,
+    //! Section created implicitly and can be deleted by \ref Target.
+    kFlagImplicit = 0x80000000u
+  };
+
+  //! \name Accessors
+  //! \{
+
+  //! Returns the section id.
+  inline uint32_t id() const noexcept { return _id; }
+  //! Returns the section name, as a null terminated string.
+  inline const char* name() const noexcept { return _name.str; }
+
+  //! Returns the section data.
+  inline uint8_t* data() noexcept { return _buffer.data(); }
+  //! \overload
+  inline const uint8_t* data() const noexcept { return _buffer.data(); }
+
+  //! Returns the section flags, see \ref Flags.
+  inline uint32_t flags() const noexcept { return _flags; }
+  //! Tests whether the section has the given `flag`.
+  inline bool hasFlag(uint32_t flag) const noexcept { return (_flags & flag) != 0; }
+  //! Adds `flags` to the section flags.
+  inline void addFlags(uint32_t flags) noexcept { _flags |= flags; }
+  //! Removes `flags` from the section flags.
+  inline void clearFlags(uint32_t flags) noexcept { _flags &= ~flags; }
+
+  //! Returns the minimum section alignment
+  inline uint32_t alignment() const noexcept { return _alignment; }
+  //! Sets the minimum section alignment
+  inline void setAlignment(uint32_t alignment) noexcept { _alignment = alignment; }
+
+  //! Returns the section order, which has a higher priority than section id.
+  inline int32_t order() const noexcept { return _order; }
+
+  //! Returns the section offset, relative to base.
+  inline uint64_t offset() const noexcept { return _offset; }
+  //! Set the section offset.
+  inline void setOffset(uint64_t offset) noexcept { _offset = offset; }
+
+  //! Returns the virtual size of the section.
+  //!
+  //! Virtual size is initially zero and is never changed by AsmJit. It's normal
+  //! if virtual size is smaller than size returned by `bufferSize()` as the buffer
+  //! stores real data emitted by assemblers or appended by users.
+  //!
+  //! Use `realSize()` to get the real and final size of this section.
+  inline uint64_t virtualSize() const noexcept { return _virtualSize; }
+  //! Sets the virtual size of the section.
+  inline void setVirtualSize(uint64_t virtualSize) noexcept { _virtualSize = virtualSize; }
+
+  //! Returns the buffer size of the section.
+  inline size_t bufferSize() const noexcept { return _buffer.size(); }
+  //! Returns the real size of the section calculated from virtual and buffer sizes.
+  inline uint64_t realSize() const noexcept { return Support::max<uint64_t>(virtualSize(), bufferSize()); }
+
+  //! Returns the `CodeBuffer` used by this section.
+  inline CodeBuffer& buffer() noexcept { return _buffer; }
+  //! Returns the `CodeBuffer` used by this section (const).
+  inline const CodeBuffer& buffer() const noexcept { return _buffer; }
+
+  //! \}
+};
+
+// ============================================================================
+// [asmjit::OffsetFormat]
+// ============================================================================
+
+//! Provides information about formatting offsets, absolute addresses, or their
+//! parts. Offset format is used by both \ref RelocEntry and \ref LabelLink.
+//!
+//! The illustration above describes the relation of region size and offset size.
+//! Region size is the size of the whole unit whereas offset size is the size of
+//! the unit that will be patched.
+//!
+//! ```
+//! +-> Code buffer |   The subject of the relocation (region)  |
+//! |               | (Word-Offset)  (Word-Size)                |
+//! |xxxxxxxxxxxxxxx|................|*PATCHED*|................|xxxxxxxxxxxx->
+//!                                  |         |
+//!     [Word Offset points here]----+         +--- [WordOffset + WordSize]
+//! ```
+//!
+//! Once the offset word has been located it can be patched like this:
+//!
+//! ```
+//!                               |ImmDiscardLSB (discard LSB bits).
+//!                               |..
+//! [0000000000000iiiiiiiiiiiiiiiiiDD] - Offset value (32-bit)
+//! [000000000000000iiiiiiiiiiiiiiiii] - Offset value after discard LSB.
+//! [00000000000iiiiiiiiiiiiiiiii0000] - Offset value shifted by ImmBitShift.
+//! [xxxxxxxxxxxiiiiiiiiiiiiiiiiixxxx] - Patched word (32-bit)
+//!             |...............|
+//!               (ImmBitCount) +- ImmBitShift
+//! ```
+struct OffsetFormat {
+  //! Type of the displacement.
+  uint8_t _type;
+  //! Encoding flags.
+  uint8_t _flags;
+  //! Size of the region (in bytes) containing the offset value, if the offset
+  //! value is part of an instruction, otherwise it would be the same as
+  //! `_valueSize`.
+  uint8_t _regionSize;
+  //! Size of the offset value, in bytes (1, 2, 4, or 8).
+  uint8_t _valueSize;
+  //! Offset of the offset value, in bytes, relative to the start of the region
+  //! or data. Value offset would be zero if both region size and value size are
+  //! equal.
+  uint8_t _valueOffset;
+  //! Size of the displacement immediate value in bits.
+  uint8_t _immBitCount;
+  //! Shift of the displacement immediate value in bits in the target word.
+  uint8_t _immBitShift;
+  //! Number of least significant bits to discard before writing the immediate
+  //! to the destination. All discarded bits must be zero otherwise the value
+  //! is invalid.
+  uint8_t _immDiscardLsb;
+
+  //! Type of the displacement.
+  enum Type : uint8_t {
+    //! A value having `_immBitCount` bits and shifted by `_immBitShift`.
+    //!
+    //! This displacement type is sufficient for both X86/X64 and many other
+    //! architectures that store displacement as continuous bits within a machine
+    //! word.
+    kTypeCommon = 0,
+    //! AARCH64 ADR format of `[.|immlo:2|.....|immhi:19|.....]`.
+    kTypeAArch64_ADR,
+    //! AARCH64 ADRP format of `[.|immlo:2|.....|immhi:19|.....]` (4kB pages).
+    kTypeAArch64_ADRP,
+
+    //! Count of displacement types.
+    kTypeCount
+  };
+
+  //! Returns the type of the displacement.
+  inline uint32_t type() const noexcept { return _type; }
+
+  //! Returns flags.
+  inline uint32_t flags() const noexcept { return _flags; }
+
+  //! Returns the size of the region/instruction where the displacement is encoded.
+  inline uint32_t regionSize() const noexcept { return _regionSize; }
+
+  //! Returns the the offset of the word relative to the start of the region
+  //! where the displacement is.
+  inline uint32_t valueOffset() const noexcept { return _valueOffset; }
+
+  //! Returns the size of the data-type (word) that contains the displacement, in bytes.
+  inline uint32_t valueSize() const noexcept { return _valueSize; }
+  //! Returns the count of bits of the displacement value in the data it's stored in.
+  inline uint32_t immBitCount() const noexcept { return _immBitCount; }
+  //! Returns the bit-shift of the displacement value in the data it's stored in.
+  inline uint32_t immBitShift() const noexcept { return _immBitShift; }
+  //! Returns the number of least significant bits of the displacement value,
+  //! that must be zero and that are not part of the encoded data.
+  inline uint32_t immDiscardLsb() const noexcept { return _immDiscardLsb; }
+
+  //! Resets this offset format to a simple data value of `dataSize` bytes.
+  //!
+  //! The region will be the same size as data and immediate bits would correspond
+  //! to `dataSize * 8`. There will be no immediate bit shift or discarded bits.
+  inline void resetToDataValue(size_t dataSize) noexcept {
+    ASMJIT_ASSERT(dataSize <= 8u);
+
+    _type = uint8_t(kTypeCommon);
+    _flags = uint8_t(0);
+    _regionSize = uint8_t(dataSize);
+    _valueSize = uint8_t(dataSize);
+    _valueOffset = uint8_t(0);
+    _immBitCount = uint8_t(dataSize * 8u);
+    _immBitShift = uint8_t(0);
+    _immDiscardLsb = uint8_t(0);
+  }
+
+  inline void resetToImmValue(uint32_t type, size_t valueSize, uint32_t immBitShift, uint32_t immBitCount, uint32_t immDiscardLsb) noexcept {
+    ASMJIT_ASSERT(valueSize <= 8u);
+    ASMJIT_ASSERT(immBitShift < valueSize * 8u);
+    ASMJIT_ASSERT(immBitCount <= 64u);
+    ASMJIT_ASSERT(immDiscardLsb <= 64u);
+
+    _type = uint8_t(type);
+    _flags = uint8_t(0);
+    _regionSize = uint8_t(valueSize);
+    _valueSize = uint8_t(valueSize);
+    _valueOffset = uint8_t(0);
+    _immBitCount = uint8_t(immBitCount);
+    _immBitShift = uint8_t(immBitShift);
+    _immDiscardLsb = uint8_t(immDiscardLsb);
+  }
+
+  inline void setRegion(size_t regionSize, size_t valueOffset) noexcept {
+    _regionSize = uint8_t(regionSize);
+    _valueOffset = uint8_t(valueOffset);
+  }
+
+  inline void setLeadingAndTrailingSize(size_t leadingSize, size_t trailingSize) noexcept {
+    _regionSize = uint8_t(leadingSize + trailingSize + _valueSize);
+    _valueOffset = uint8_t(leadingSize);
+  }
+};
+
+// ============================================================================
+// [asmjit::RelocEntry]
+// ============================================================================
+
+//! Relocation entry.
+struct RelocEntry {
+  //! Relocation id.
+  uint32_t _id;
+  //! Type of the relocation.
+  uint32_t _relocType;
+  //! Format of the relocated value.
+  OffsetFormat _format;
+  //! Source section id.
+  uint32_t _sourceSectionId;
+  //! Target section id.
+  uint32_t _targetSectionId;
+  //! Source offset (relative to start of the section).
+  uint64_t _sourceOffset;
+  //! Payload (target offset, target address, expression, etc).
+  uint64_t _payload;
+
+  //! Relocation type.
+  enum RelocType : uint32_t {
+    //! None/deleted (no relocation).
+    kTypeNone = 0,
+    //! Expression evaluation, `_payload` is pointer to `Expression`.
+    kTypeExpression = 1,
+    //! Relocate absolute to absolute.
+    kTypeAbsToAbs = 2,
+    //! Relocate relative to absolute.
+    kTypeRelToAbs = 3,
+    //! Relocate absolute to relative.
+    kTypeAbsToRel = 4,
+    //! Relocate absolute to relative or use trampoline.
+    kTypeX64AddressEntry = 5
+  };
+
+  //! \name Accessors
+  //! \{
+
+  inline uint32_t id() const noexcept { return _id; }
+
+  inline uint32_t relocType() const noexcept { return _relocType; }
+  inline const OffsetFormat& format() const noexcept { return _format; }
+
+  inline uint32_t sourceSectionId() const noexcept { return _sourceSectionId; }
+  inline uint32_t targetSectionId() const noexcept { return _targetSectionId; }
+
+  inline uint64_t sourceOffset() const noexcept { return _sourceOffset; }
+  inline uint64_t payload() const noexcept { return _payload; }
+
+  Expression* payloadAsExpression() const noexcept {
+    return reinterpret_cast<Expression*>(uintptr_t(_payload));
+  }
+
+  //! \}
+};
+
+// ============================================================================
+// [asmjit::LabelLink]
+// ============================================================================
+
+//! Data structure used to link either unbound labels or cross-section links.
+struct LabelLink {
+  //! Next link (single-linked list).
+  LabelLink* next;
+  //! Section id where the label is bound.
+  uint32_t sectionId;
+  //! Relocation id or Globals::kInvalidId.
+  uint32_t relocId;
+  //! Label offset relative to the start of the section.
+  size_t offset;
+  //! Inlined rel8/rel32.
+  intptr_t rel;
+  //! Offset format information.
+  OffsetFormat format;
+};
+
+// ============================================================================
 // [asmjit::LabelEntry]
 // ============================================================================
 
@@ -281,8 +483,10 @@ public:
   // Let's round the size of `LabelEntry` to 64 bytes (as `ZoneAllocator` has
   // granularity of 32 bytes anyway). This gives `_name` the remaining space,
   // which is should be 16 bytes on 64-bit and 28 bytes on 32-bit architectures.
-  static constexpr uint32_t kStaticNameSize =
-    64 - (sizeof(ZoneHashNode) + 8 + sizeof(Section*) + sizeof(size_t) + sizeof(LabelLink*));
+  enum : uint32_t {
+    kStaticNameSize =
+      64 - (sizeof(ZoneHashNode) + 8 + sizeof(Section*) + sizeof(size_t) + sizeof(LabelLink*))
+  };
 
   //! Label type, see `Label::LabelType`.
   uint8_t _type;
@@ -365,82 +569,6 @@ public:
 };
 
 // ============================================================================
-// [asmjit::RelocEntry]
-// ============================================================================
-
-//! Relocation entry.
-//!
-//! We describe relocation data in the following way:
-//!
-//! ```
-//! +- Start of the buffer                              +- End of the data
-//! |                               |*PATCHED*|         |  or instruction
-//! |xxxxxxxxxxxxxxxxxxxxxx|LeadSize|ValueSize|TrailSize|xxxxxxxxxxxxxxxxxxxx->
-//!                        |
-//!                        +- Source offset
-//! ```
-struct RelocEntry {
-  //! Relocation id.
-  uint32_t _id;
-  //! Type of the relocation.
-  uint8_t _relocType;
-  //! Size of the relocation data/value (1, 2, 4 or 8 bytes).
-  uint8_t _valueSize;
-  //! Number of bytes after `_sourceOffset` to reach the value to be patched.
-  uint8_t _leadingSize;
-  //! Number of bytes after `_sourceOffset + _valueSize` to reach end of the
-  //! instruction.
-  uint8_t _trailingSize;
-  //! Source section id.
-  uint32_t _sourceSectionId;
-  //! Target section id.
-  uint32_t _targetSectionId;
-  //! Source offset (relative to start of the section).
-  uint64_t _sourceOffset;
-  //! Payload (target offset, target address, expression, etc).
-  uint64_t _payload;
-
-  //! Relocation type.
-  enum RelocType : uint32_t {
-    //! None/deleted (no relocation).
-    kTypeNone = 0,
-    //! Expression evaluation, `_payload` is pointer to `Expression`.
-    kTypeExpression = 1,
-    //! Relocate absolute to absolute.
-    kTypeAbsToAbs = 2,
-    //! Relocate relative to absolute.
-    kTypeRelToAbs = 3,
-    //! Relocate absolute to relative.
-    kTypeAbsToRel = 4,
-    //! Relocate absolute to relative or use trampoline.
-    kTypeX64AddressEntry = 5
-  };
-
-  //! \name Accessors
-  //! \{
-
-  inline uint32_t id() const noexcept { return _id; }
-
-  inline uint32_t relocType() const noexcept { return _relocType; }
-  inline uint32_t valueSize() const noexcept { return _valueSize; }
-
-  inline uint32_t leadingSize() const noexcept { return _leadingSize; }
-  inline uint32_t trailingSize() const noexcept { return _trailingSize; }
-
-  inline uint32_t sourceSectionId() const noexcept { return _sourceSectionId; }
-  inline uint32_t targetSectionId() const noexcept { return _targetSectionId; }
-
-  inline uint64_t sourceOffset() const noexcept { return _sourceOffset; }
-  inline uint64_t payload() const noexcept { return _payload; }
-
-  Expression* payloadAsExpression() const noexcept {
-    return reinterpret_cast<Expression*>(uintptr_t(_payload));
-  }
-
-  //! \}
-};
-
-// ============================================================================
 // [asmjit::AddressTableEntry]
 // ============================================================================
 
@@ -517,6 +645,8 @@ public:
   ZoneVector<BaseEmitter*> _emitters;
   //! Section entries.
   ZoneVector<Section*> _sections;
+  //! Section entries sorted by section order and then section id.
+  ZoneVector<Section*> _sectionsByOrder;
   //! Label entries.
   ZoneVector<LabelEntry*> _labelEntries;
   //! Relocation entries.
@@ -563,7 +693,7 @@ public:
   //! Emitters can be only attached to initialized `CodeHolder` instances.
   inline bool isInitialized() const noexcept { return _environment.isInitialized(); }
 
-  //! Initializes CodeHolder to hold code described by code `info`.
+  //! Initializes CodeHolder to hold code described by the given `environment` and `baseAddress`.
   ASMJIT_API Error init(const Environment& environment, uint64_t baseAddress = Globals::kNoBaseAddress) noexcept;
   //! Detaches all code-generators attached and resets the `CodeHolder`.
   ASMJIT_API void reset(uint32_t resetPolicy = Globals::kResetSoft) noexcept;
@@ -665,6 +795,8 @@ public:
 
   //! Returns an array of `Section*` records.
   inline const ZoneVector<Section*>& sections() const noexcept { return _sections; }
+  //! Returns an array of `Section*` records sorted according to section order first, then section id.
+  inline const ZoneVector<Section*>& sectionsByOrder() const noexcept { return _sectionsByOrder; }
   //! Returns the number of sections.
   inline uint32_t sectionCount() const noexcept { return _sections.size(); }
 
@@ -674,7 +806,7 @@ public:
   //! Creates a new section and return its pointer in `sectionOut`.
   //!
   //! Returns `Error`, does not report a possible error to `ErrorHandler`.
-  ASMJIT_API Error newSection(Section** sectionOut, const char* name, size_t nameSize = SIZE_MAX, uint32_t flags = 0, uint32_t alignment = 1) noexcept;
+  ASMJIT_API Error newSection(Section** sectionOut, const char* name, size_t nameSize = SIZE_MAX, uint32_t flags = 0, uint32_t alignment = 1, int32_t order = 0) noexcept;
 
   //! Returns a section entry of the given index.
   inline Section* sectionById(uint32_t sectionId) const noexcept { return _sections[sectionId]; }
@@ -834,7 +966,7 @@ public:
   //! Creates a new label-link used to store information about yet unbound labels.
   //!
   //! Returns `null` if the allocation failed.
-  ASMJIT_API LabelLink* newLabelLink(LabelEntry* le, uint32_t sectionId, size_t offset, intptr_t rel) noexcept;
+  ASMJIT_API LabelLink* newLabelLink(LabelEntry* le, uint32_t sectionId, size_t offset, intptr_t rel, const OffsetFormat& format) noexcept;
 
   //! Resolves cross-section links (`LabelLink`) associated with each label that
   //! was used as a destination in code of a different section. It's only useful
@@ -860,10 +992,10 @@ public:
   //! Returns a RelocEntry of the given `id`.
   inline RelocEntry* relocEntry(uint32_t id) const noexcept { return _relocations[id]; }
 
-  //! Creates a new relocation entry of type `relocType` and size `valueSize`.
+  //! Creates a new relocation entry of type `relocType`.
   //!
   //! Additional fields can be set after the relocation entry was created.
-  ASMJIT_API Error newRelocEntry(RelocEntry** dst, uint32_t relocType, uint32_t valueSize) noexcept;
+  ASMJIT_API Error newRelocEntry(RelocEntry** dst, uint32_t relocType) noexcept;
 
   //! \}
 

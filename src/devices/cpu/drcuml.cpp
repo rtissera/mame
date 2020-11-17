@@ -39,6 +39,7 @@
 #ifdef NATIVE_DRC
 #include "drcbex86.h"
 #include "drcbex64.h"
+#include "drcbea64.h"
 #endif
 
 #include <fstream>

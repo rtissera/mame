@@ -21,44 +21,57 @@
 //    misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#ifndef ASMJIT_CORE_ARCH_H_INCLUDED
-#define ASMJIT_CORE_ARCH_H_INCLUDED
+#include "../core/api-build_p.h"
+#if defined(ASMJIT_BUILD_ARM) && !defined(ASMJIT_NO_COMPILER)
 
-#include "../core/environment.h"
-#include "../core/operand.h"
+#include "../arm/a64assembler.h"
+#include "../arm/a64compiler.h"
+#include "../arm/a64rapass_p.h"
 
-ASMJIT_BEGIN_NAMESPACE
-
-//! \addtogroup asmjit_core
-//! \{
+ASMJIT_BEGIN_SUB_NAMESPACE(a64)
 
 // ============================================================================
-// [asmjit::ArchRegs]
+// [asmjit::a64::Compiler - Construction / Destruction]
 // ============================================================================
 
-//! Information about registers of a CPU architecture.
-struct ArchRegs {
-  //! Register information and signatures indexed by `BaseReg::RegType`.
-  RegInfo regInfo[BaseReg::kTypeMax + 1];
-  //! Count (maximum) of registers per `BaseReg::RegType`.
-  uint8_t regCount[BaseReg::kTypeMax + 1];
-  //! Converts RegType to TypeId, see `Type::Id`.
-  uint8_t regTypeToTypeId[BaseReg::kTypeMax + 1];
-};
+Compiler::Compiler(CodeHolder* code) noexcept : BaseCompiler() {
+  if (code)
+    code->attach(this);
+}
+Compiler::~Compiler() noexcept {}
 
 // ============================================================================
-// [asmjit::ArchUtils]
+// [asmjit::a64::Compiler - Finalize]
 // ============================================================================
 
-//! Architecture utilities.
-namespace ArchUtils {
+Error Compiler::finalize() {
+  ASMJIT_PROPAGATE(runPasses());
+  Assembler a(_code);
+  a.addEncodingOptions(encodingOptions());
+  a.addValidationOptions(validationOptions());
+  return serializeTo(&a);
+}
 
-ASMJIT_API Error typeIdToRegInfo(uint32_t arch, uint32_t typeId, uint32_t* typeIdOut, RegInfo* regInfo) noexcept;
+// ============================================================================
+// [asmjit::a64::Compiler - Events]
+// ============================================================================
 
-} // {ArchUtils}
+Error Compiler::onAttach(CodeHolder* code) noexcept {
+  uint32_t arch = code->arch();
+  if (!Environment::isFamilyARM(arch))
+    return DebugUtils::errored(kErrorInvalidArch);
 
-//! \}
+  ASMJIT_PROPAGATE(Base::onAttach(code));
+  Error err = addPassT<ARMRAPass>();
 
-ASMJIT_END_NAMESPACE
+  if (ASMJIT_UNLIKELY(err)) {
+    onDetach(code);
+    return err;
+  }
 
-#endif // ASMJIT_CORE_ARCH_H_INCLUDED
+  return kErrorOk;
+}
+
+ASMJIT_END_SUB_NAMESPACE
+
+#endif // ASMJIT_BUILD_ARM && !ASMJIT_NO_COMPILER

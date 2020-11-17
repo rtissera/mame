@@ -48,7 +48,7 @@ Error Builder::finalize() {
   Assembler a(_code);
   a.addEncodingOptions(encodingOptions());
   a.addValidationOptions(validationOptions());
-  return serialize(&a);
+  return serializeTo(&a);
 }
 
 // ============================================================================
@@ -60,10 +60,7 @@ Error Builder::onAttach(CodeHolder* code) noexcept {
   if (!Environment::isFamilyX86(arch))
     return DebugUtils::errored(kErrorInvalidArch);
 
-  ASMJIT_PROPAGATE(Base::onAttach(code));
-
-  _gpRegInfo.setSignature(Environment::is32Bit(arch) ? uint32_t(Gpd::kSignature) : uint32_t(Gpq::kSignature));
-  return kErrorOk;
+  return Base::onAttach(code);
 }
 
 ASMJIT_END_SUB_NAMESPACE

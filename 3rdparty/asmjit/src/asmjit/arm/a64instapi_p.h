@@ -21,39 +21,39 @@
 //    misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#include "../core/api-build_p.h"
-#include "../core/arch.h"
+#ifndef ASMJIT_ARM_A64INSTAPI_P_H_INCLUDED
+#define ASMJIT_ARM_A64INSTAPI_P_H_INCLUDED
 
-#ifdef ASMJIT_BUILD_X86
-  #include "../x86/x86archdata_p.h"
-#endif
+#include "../core/inst.h"
+#include "../core/operand.h"
 
-#ifdef ASMJIT_BUILD_ARM
-  #include "../arm/armarchdata_p.h"
-#endif
+ASMJIT_BEGIN_SUB_NAMESPACE(a64)
 
-ASMJIT_BEGIN_NAMESPACE
+//! \cond INTERNAL
+//! \addtogroup asmjit_a64
+//! \{
 
-// ============================================================================
-// [asmjit::ArchUtils]
-// ============================================================================
+namespace InstInternal {
 
-ASMJIT_FAVOR_SIZE Error ArchUtils::typeIdToRegInfo(uint32_t arch, uint32_t typeId, uint32_t* typeIdOut, RegInfo* regInfoOut) noexcept {
-  // Zero the output in case the input is invalid.
-  *typeIdOut = 0;
-  regInfoOut->reset();
+#ifndef ASMJIT_NO_TEXT
+Error instIdToString(uint32_t arch, uint32_t instId, String& output) noexcept;
+uint32_t stringToInstId(uint32_t arch, const char* s, size_t len) noexcept;
+#endif // !ASMJIT_NO_TEXT
 
-#ifdef ASMJIT_BUILD_X86
-  if (Environment::isFamilyX86(arch))
-    return x86::ArchInternal::typeIdToRegInfo(arch, typeId, typeIdOut, regInfoOut);
-#endif
+#ifndef ASMJIT_NO_VALIDATION
+Error validate(uint32_t arch, const BaseInst& inst, const Operand_* operands, size_t opCount, uint32_t validationFlags) noexcept;
+#endif // !ASMJIT_NO_VALIDATION
 
-#ifdef ASMJIT_BUILD_ARM
-  if (Environment::isFamilyARM(arch))
-    return arm::ArchInternal::typeIdToRegInfo(arch, typeId, typeIdOut, regInfoOut);
-#endif
+#ifndef ASMJIT_NO_INTROSPECTION
+Error queryRWInfo(uint32_t arch, const BaseInst& inst, const Operand_* operands, size_t opCount, InstRWInfo* out) noexcept;
+Error queryFeatures(uint32_t arch, const BaseInst& inst, const Operand_* operands, size_t opCount, BaseFeatures* out) noexcept;
+#endif // !ASMJIT_NO_INTROSPECTION
 
-  return DebugUtils::errored(kErrorInvalidArch);
-}
+} // {InstInternal}
 
-ASMJIT_END_NAMESPACE
+//! \}
+//! \endcond
+
+ASMJIT_END_SUB_NAMESPACE
+
+#endif // ASMJIT_ARM_A64INSTAPI_P_H_INCLUDED

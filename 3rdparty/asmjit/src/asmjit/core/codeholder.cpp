@@ -23,8 +23,12 @@
 
 #include "../core/api-build_p.h"
 #include "../core/assembler.h"
+#include "../core/codewriter_p.h"
 #include "../core/logger.h"
 #include "../core/support.h"
+
+#include <algorithm>
+#include <tuple>
 
 ASMJIT_BEGIN_NAMESPACE
 
@@ -113,6 +117,7 @@ static void CodeHolder_resetInternal(CodeHolder* self, uint32_t resetPolicy) noe
   self->_relocations.reset();
   self->_labelEntries.reset();
   self->_sections.reset();
+  self->_sectionsByOrder.reset();
 
   self->_unresolvedLinkCount = 0;
   self->_addressTableSection = nullptr;
@@ -169,13 +174,15 @@ Error CodeHolder::init(const Environment& environment, uint64_t baseAddress) noe
   ASMJIT_ASSERT(_emitters.empty());
 
   // Create a default section and insert it to the `_sections` array.
-  Error err = _sections.willGrow(&_allocator);
+  Error err = _sections.willGrow(&_allocator) |
+              _sectionsByOrder.willGrow(&_allocator);
   if (err == kErrorOk) {
     Section* section = _allocator.allocZeroedT<Section>();
     if (ASMJIT_LIKELY(section)) {
       section->_flags = Section::kFlagExec | Section::kFlagConst;
       CodeHolder_setSectionDefaultName(section, '.', 't', 'e', 'x', 't');
       _sections.appendUnsafe(section);
+      _sectionsByOrder.appendUnsafe(section);
     }
     else {
       err = DebugUtils::errored(kErrorOutOfMemory);
@@ -351,7 +358,9 @@ Error CodeHolder::growBuffer(CodeBuffer* cb, size_t n) noexcept {
 
 Error CodeHolder::reserveBuffer(CodeBuffer* cb, size_t n) noexcept {
   size_t capacity = cb->capacity();
-  if (n <= capacity) return kErrorOk;
+
+  if (n <= capacity)
+    return kErrorOk;
 
   if (cb->isFixed())
     return DebugUtils::errored(kErrorTooLarge);
@@ -363,7 +372,7 @@ Error CodeHolder::reserveBuffer(CodeBuffer* cb, size_t n) noexcept {
 // [asmjit::CodeHolder - Sections]
 // ============================================================================
 
-Error CodeHolder::newSection(Section** sectionOut, const char* name, size_t nameSize, uint32_t flags, uint32_t alignment) noexcept {
+Error CodeHolder::newSection(Section** sectionOut, const char* name, size_t nameSize, uint32_t flags, uint32_t alignment, int32_t order) noexcept {
   *sectionOut = nullptr;
 
   if (nameSize == SIZE_MAX)
@@ -383,16 +392,24 @@ Error CodeHolder::newSection(Section** sectionOut, const char* name, size_t name
     return DebugUtils::errored(kErrorTooManySections);
 
   ASMJIT_PROPAGATE(_sections.willGrow(&_allocator));
-  Section* section = _allocator.allocZeroedT<Section>();
+  ASMJIT_PROPAGATE(_sectionsByOrder.willGrow(&_allocator));
 
+  Section* section = _allocator.allocZeroedT<Section>();
   if (ASMJIT_UNLIKELY(!section))
     return DebugUtils::errored(kErrorOutOfMemory);
 
   section->_id = sectionId;
   section->_flags = flags;
   section->_alignment = alignment;
+  section->_order = order;
   memcpy(section->_name.str, name, nameSize);
+
+  Section** insertPosition = std::lower_bound(_sectionsByOrder.begin(), _sectionsByOrder.end(), section, [](const Section* a, const Section* b) {
+    return std::make_tuple(a->order(), a->id()) < std::make_tuple(b->order(), b->id());
+  });
+
   _sections.appendUnsafe(section);
+  _sectionsByOrder.insertUnsafe((size_t)(insertPosition - _sectionsByOrder.data()), section);
 
   *sectionOut = section;
   return kErrorOk;
@@ -405,7 +422,7 @@ Section* CodeHolder::sectionByName(const char* name, size_t nameSize) const noex
   // This could be also put in a hash-table similarly like we do with labels,
   // however it's questionable as the number of sections should be pretty low
   // in general. Create an issue if this becomes a problem.
-  if (ASMJIT_UNLIKELY(nameSize <= Globals::kMaxSectionNameSize)) {
+  if (nameSize <= Globals::kMaxSectionNameSize) {
     for (Section* section : _sections)
       if (memcmp(section->_name.str, name, nameSize) == 0 && section->_name.str[nameSize] == '\0')
         return section;
@@ -418,7 +435,7 @@ Section* CodeHolder::ensureAddressTableSection() noexcept {
   if (_addressTableSection)
     return _addressTableSection;
 
-  newSection(&_addressTableSection, CodeHolder_addrTabName, sizeof(CodeHolder_addrTabName) - 1, 0, _environment.registerSize());
+  newSection(&_addressTableSection, CodeHolder_addrTabName, sizeof(CodeHolder_addrTabName) - 1, 0, _environment.registerSize(), std::numeric_limits<int32_t>::max());
   return _addressTableSection;
 }
 
@@ -491,20 +508,7 @@ static uint32_t CodeHolder_hashNameAndGetSize(const char* name, size_t& nameSize
   return hashCode;
 }
 
-static bool CodeHolder_writeDisplacement(void* dst, int64_t displacement, uint32_t displacementSize) {
-  if (displacementSize == 4 && Support::isInt32(displacement)) {
-    Support::writeI32uLE(dst, int32_t(displacement));
-    return true;
-  }
-  else if (displacementSize == 1 && Support::isInt8(displacement)) {
-    Support::writeI8(dst, int8_t(displacement));
-    return true;
-  }
-
-  return false;
-}
-
-LabelLink* CodeHolder::newLabelLink(LabelEntry* le, uint32_t sectionId, size_t offset, intptr_t rel) noexcept {
+LabelLink* CodeHolder::newLabelLink(LabelEntry* le, uint32_t sectionId, size_t offset, intptr_t rel, const OffsetFormat& format) noexcept {
   LabelLink* link = _allocator.allocT<LabelLink>();
   if (ASMJIT_UNLIKELY(!link)) return nullptr;
 
@@ -515,6 +519,7 @@ LabelLink* CodeHolder::newLabelLink(LabelEntry* le, uint32_t sectionId, size_t o
   link->relocId = Globals::kInvalidId;
   link->offset = offset;
   link->rel = rel;
+  link->format = format;
 
   _unresolvedLinkCount++;
   return link;
@@ -561,9 +566,9 @@ Error CodeHolder::newNamedLabelEntry(LabelEntry** entryOut, const char* name, si
       break;
 
     case Label::kTypeGlobal:
+    case Label::kTypeExternal:
       if (ASMJIT_UNLIKELY(parentId != Globals::kInvalidId))
         return DebugUtils::errored(kErrorNonLocalLabelCannotHaveParent);
-
       break;
 
     default:
@@ -640,18 +645,16 @@ ASMJIT_API Error CodeHolder::resolveUnresolvedLinks() noexcept {
           ASMJIT_ASSERT(linkOffset < buf.size());
 
           // Calculate the offset relative to the start of the virtual base.
-          uint64_t fromOffset = Support::addOverflow<uint64_t>(fromSection->offset(), linkOffset, &of);
+          Support::FastUInt8 localOF = of;
+          uint64_t fromOffset = Support::addOverflow<uint64_t>(fromSection->offset(), linkOffset, &localOF);
           int64_t displacement = int64_t(toOffset - fromOffset + uint64_t(int64_t(link->rel)));
 
-          if (!of) {
+          if (!localOF) {
             ASMJIT_ASSERT(size_t(linkOffset) < buf.size());
-
-            // Size of the value we are going to patch. Only BYTE/DWORD is allowed.
-            uint32_t displacementSize = buf._data[linkOffset];
-            ASMJIT_ASSERT(buf.size() - size_t(linkOffset) >= displacementSize);
+            ASMJIT_ASSERT(buf.size() - size_t(linkOffset) >= link->format.valueSize());
 
             // Overwrite a real displacement in the CodeBuffer.
-            if (CodeHolder_writeDisplacement(buf._data + linkOffset, displacement, displacementSize)) {
+            if (CodeWriterUtils::writeOffset(buf._data + linkOffset, displacement, link->format)) {
               link.resolveAndNext(this);
               continue;
             }
@@ -714,11 +717,10 @@ ASMJIT_API Error CodeHolder::bindLabel(const Label& label, uint32_t toSectionId,
       int64_t displacement = int64_t(toOffset - uint64_t(linkOffset) + uint64_t(int64_t(link->rel)));
 
       // Size of the value we are going to patch. Only BYTE/DWORD is allowed.
-      uint32_t displacementSize = buf._data[linkOffset];
-      ASMJIT_ASSERT(buf.size() - size_t(linkOffset) >= displacementSize);
+      ASMJIT_ASSERT(buf.size() - size_t(linkOffset) >= link->format.regionSize());
 
       // Overwrite a real displacement in the CodeBuffer.
-      if (!CodeHolder_writeDisplacement(buf._data + linkOffset, displacement, displacementSize)) {
+      if (!CodeWriterUtils::writeOffset(buf._data + linkOffset, displacement, link->format)) {
         err = DebugUtils::errored(kErrorInvalidDisplacement);
         link.next();
         continue;
@@ -735,7 +737,7 @@ ASMJIT_API Error CodeHolder::bindLabel(const Label& label, uint32_t toSectionId,
 // [asmjit::BaseEmitter - Relocations]
 // ============================================================================
 
-Error CodeHolder::newRelocEntry(RelocEntry** dst, uint32_t relocType, uint32_t valueSize) noexcept {
+Error CodeHolder::newRelocEntry(RelocEntry** dst, uint32_t relocType) noexcept {
   ASMJIT_PROPAGATE(_relocations.willGrow(&_allocator));
 
   uint32_t relocId = _relocations.size();
@@ -748,7 +750,6 @@ Error CodeHolder::newRelocEntry(RelocEntry** dst, uint32_t relocType, uint32_t v
 
   re->_id = relocId;
   re->_relocType = uint8_t(relocType);
-  re->_valueSize = uint8_t(valueSize);
   re->_sourceSectionId = Globals::kInvalidId;
   re->_targetSectionId = Globals::kInvalidId;
   _relocations.appendUnsafe(re);
@@ -840,7 +841,7 @@ static Error CodeHolder_evaluateExpression(CodeHolder* self, Expression* exp, ui
 
 Error CodeHolder::flatten() noexcept {
   uint64_t offset = 0;
-  for (Section* section : _sections) {
+  for (Section* section : _sectionsByOrder) {
     uint64_t realSize = section->realSize();
     if (realSize) {
       uint64_t alignedOffset = Support::alignUp(offset, section->alignment());
@@ -858,7 +859,7 @@ Error CodeHolder::flatten() noexcept {
   // Now we know that we can assign offsets of all sections properly.
   Section* prev = nullptr;
   offset = 0;
-  for (Section* section : _sections) {
+  for (Section* section : _sectionsByOrder) {
     uint64_t realSize = section->realSize();
     if (realSize)
       offset = Support::alignUp(offset, section->alignment());
@@ -879,7 +880,7 @@ size_t CodeHolder::codeSize() const noexcept {
   Support::FastUInt8 of = 0;
   uint64_t offset = 0;
 
-  for (Section* section : _sections) {
+  for (Section* section : _sectionsByOrder) {
     uint64_t realSize = section->realSize();
 
     if (realSize) {
@@ -930,13 +931,13 @@ Error CodeHolder::relocateToBase(uint64_t baseAddress) noexcept {
     uint64_t sourceOffset = re->sourceOffset();
 
     // Make sure that the `RelocEntry` doesn't go out of bounds.
-    size_t regionSize = re->leadingSize() + re->valueSize() + re->trailingSize();
+    size_t regionSize = re->format().regionSize();
     if (ASMJIT_UNLIKELY(re->sourceOffset() >= sourceSection->bufferSize() ||
                         sourceSection->bufferSize() - size_t(re->sourceOffset()) < regionSize))
       return DebugUtils::errored(kErrorInvalidRelocEntry);
 
     uint8_t* buffer = sourceSection->data();
-    size_t valueOffset = size_t(re->sourceOffset()) + re->leadingSize();
+    size_t valueOffset = size_t(re->sourceOffset()) + re->format().valueOffset();
 
     switch (re->relocType()) {
       case RelocEntry::kTypeExpression: {
@@ -968,7 +969,7 @@ Error CodeHolder::relocateToBase(uint64_t baseAddress) noexcept {
       }
 
       case RelocEntry::kTypeX64AddressEntry: {
-        if (re->valueSize() != 4 || re->leadingSize() < 2)
+        if (re->format().valueSize() != 4 || valueOffset < 2)
           return DebugUtils::errored(kErrorInvalidRelocEntry);
 
         // First try whether a relative 32-bit displacement would work.
@@ -1022,7 +1023,7 @@ Error CodeHolder::relocateToBase(uint64_t baseAddress) noexcept {
         return DebugUtils::errored(kErrorInvalidRelocEntry);
     }
 
-    switch (re->valueSize()) {
+    switch (re->format().valueSize()) {
       case 1:
         Support::writeU8(buffer + valueOffset, uint32_t(value & 0xFFu));
         break;
@@ -1045,7 +1046,7 @@ Error CodeHolder::relocateToBase(uint64_t baseAddress) noexcept {
   }
 
   // Fixup the virtual size of the address table if it's the last section.
-  if (_sections.last() == addressTableSection) {
+  if (_sectionsByOrder.last() == addressTableSection) {
     size_t addressTableSize = addressTableEntryCount * addressSize;
     addressTableSection->_buffer._size = addressTableSize;
     addressTableSection->_virtualSize = addressTableSize;
@@ -1076,7 +1077,7 @@ Error CodeHolder::copySectionData(void* dst, size_t dstSize, uint32_t sectionId,
 
 Error CodeHolder::copyFlattenedData(void* dst, size_t dstSize, uint32_t copyOptions) noexcept {
   size_t end = 0;
-  for (Section* section : _sections) {
+  for (Section* section : _sectionsByOrder) {
     if (section->offset() > dstSize)
       return DebugUtils::errored(kErrorInvalidArgument);
 
@@ -1104,5 +1105,46 @@ Error CodeHolder::copyFlattenedData(void* dst, size_t dstSize, uint32_t copyOpti
 
   return kErrorOk;
 }
+
+// ============================================================================
+// [asmjit::CodeHolder - Unit]
+// ============================================================================
+
+#if defined(ASMJIT_TEST)
+UNIT(code_holder) {
+  CodeHolder code;
+
+  INFO("Verifying CodeHolder::init()");
+  Environment env;
+  env.init(Environment::kArchX86);
+
+  code.init(env);
+  EXPECT(code.arch() == Environment::kArchX86);
+
+  INFO("Verifying named labels");
+  LabelEntry* le;
+  EXPECT(code.newNamedLabelEntry(&le, "NamedLabel", SIZE_MAX, Label::kTypeGlobal) == kErrorOk);
+  EXPECT(strcmp(le->name(), "NamedLabel") == 0);
+  EXPECT(code.labelIdByName("NamedLabel") == le->id());
+
+  INFO("Verifying section ordering");
+  Section* section1;
+  EXPECT(code.newSection(&section1, "high-priority", SIZE_MAX, 0, 1, -1) == kErrorOk);
+  EXPECT(code.sections()[1] == section1);
+  EXPECT(code.sectionsByOrder()[0] == section1);
+
+  Section* section0;
+  EXPECT(code.newSection(&section0, "higher-priority", SIZE_MAX, 0, 1, -2) == kErrorOk);
+  EXPECT(code.sections()[2] == section0);
+  EXPECT(code.sectionsByOrder()[0] == section0);
+  EXPECT(code.sectionsByOrder()[1] == section1);
+
+  Section* section3;
+  EXPECT(code.newSection(&section3, "low-priority", SIZE_MAX, 0, 1, 2) == kErrorOk);
+  EXPECT(code.sections()[3] == section3);
+  EXPECT(code.sectionsByOrder()[3] == section3);
+
+}
+#endif
 
 ASMJIT_END_NAMESPACE

@@ -24,7 +24,7 @@
 #ifndef ASMJIT_CORE_EMITTER_H_INCLUDED
 #define ASMJIT_CORE_EMITTER_H_INCLUDED
 
-#include "../core/arch.h"
+#include "../core/archtraits.h"
 #include "../core/codeholder.h"
 #include "../core/inst.h"
 #include "../core/operand.h"
@@ -54,43 +54,43 @@ public:
   ASMJIT_BASE_CLASS(BaseEmitter)
 
   //! See \ref EmitterType.
-  uint8_t _emitterType;
+  uint8_t _emitterType = 0;
   //! See \ref BaseEmitter::EmitterFlags.
-  uint8_t _emitterFlags;
+  uint8_t _emitterFlags = 0;
   //! Validation flags in case validation is used, see \ref InstAPI::ValidationFlags.
   //!
   //! \note Validation flags are specific to the emitter and they are setup at
   //! construction time and then never changed.
-  uint8_t _validationFlags;
+  uint8_t _validationFlags = 0;
   //! Validation options, see \ref ValidationOptions.
-  uint8_t _validationOptions;
+  uint8_t _validationOptions = 0;
 
   //! Encoding options, see \ref EncodingOptions.
-  uint32_t _encodingOptions;
+  uint32_t _encodingOptions = 0;
 
   //! Forced instruction options, combined with \ref _instOptions by \ref emit().
-  uint32_t _forcedInstOptions;
+  uint32_t _forcedInstOptions = BaseInst::kOptionReserved;
   //! Internal private data used freely by any emitter.
-  uint32_t _privateData;
+  uint32_t _privateData = 0;
 
   //! CodeHolder the emitter is attached to.
-  CodeHolder* _code;
+  CodeHolder* _code = nullptr;
   //! Attached \ref Logger.
-  Logger* _logger;
+  Logger* _logger = nullptr;
   //! Attached \ref ErrorHandler.
-  ErrorHandler* _errorHandler;
+  ErrorHandler* _errorHandler = nullptr;
 
   //! Describes the target environment, matches \ref CodeHolder::environment().
-  Environment _environment;
+  Environment _environment {};
   //! Native GP register signature and signature related information.
-  RegInfo _gpRegInfo;
+  RegInfo _gpRegInfo {};
 
   //! Next instruction options (affects the next instruction).
-  uint32_t _instOptions;
+  uint32_t _instOptions = 0;
   //! Extra register (op-mask {k} on AVX-512) (affects the next instruction).
-  RegOnly _extraReg;
+  RegOnly _extraReg {};
   //! Inline comment of the next instruction (affects the next instruction).
-  const char* _inlineComment;
+  const char* _inlineComment = nullptr;
 
   //! Emitter type.
   enum EmitterType : uint32_t {
@@ -494,6 +494,11 @@ public:
   //! Creates a new named label.
   virtual Label newNamedLabel(const char* name, size_t nameSize = SIZE_MAX, uint32_t type = Label::kTypeGlobal, uint32_t parentId = Globals::kInvalidId) = 0;
 
+  //! Creates a new external label.
+  inline Label newExternalLabel(const char* name, size_t nameSize = SIZE_MAX) {
+    return newNamedLabel(name, nameSize, Label::kTypeExternal);
+  }
+
   //! Returns `Label` by `name`.
   //!
   //! Returns invalid Label in case that the name is invalid or label was not found.
@@ -561,7 +566,7 @@ public:
   //! Emits an instruction - all 6 operands must be defined.
   virtual Error _emit(uint32_t instId, const Operand_& o0, const Operand_& o1, const Operand_& o2, const Operand_* oExt) = 0;
   //! Emits instruction having operands stored in array.
-  virtual Error _emitOpArray(uint32_t instId, const Operand_* operands, size_t opCount);
+  ASMJIT_API virtual Error _emitOpArray(uint32_t instId, const Operand_* operands, size_t opCount);
   //! \endcond
 
   //! \}
@@ -628,13 +633,17 @@ public:
   //!   3. Emits ConstPool content.
   virtual Error embedConstPool(const Label& label, const ConstPool& pool) = 0;
 
-  //! Embeds an absolute label address as data (4 or 8 bytes).
-  virtual Error embedLabel(const Label& label) = 0;
+  //! Embeds an absolute `label` address as data.
+  //!
+  //! The `dataSize` is an optional argument that can be used to specify the
+  //! size of the address data. If it's zero (default) the address size is
+  //! deduced from the target architecture (either 4 or 8 bytes).
+  virtual Error embedLabel(const Label& label, size_t dataSize = 0) = 0;
 
   //! Embeds a delta (distance) between the `label` and `base` calculating it
   //! as `label - base`. This function was designed to make it easier to embed
   //! lookup tables where each index is a relative distance of two labels.
-  virtual Error embedLabelDelta(const Label& label, const Label& base, size_t dataSize) = 0;
+  virtual Error embedLabelDelta(const Label& label, const Label& base, size_t dataSize = 0) = 0;
 
   //! \}
 

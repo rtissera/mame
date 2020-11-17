@@ -10,13 +10,14 @@ if(POLICY CMP0092)
   cmake_policy(SET CMP0092 NEW) # Don't add -W3 warning level by default.
 endif()
 
-include(CheckCXXCompilerFlag)
-
 # Don't create a project if it was already created by another CMakeLists.txt.
 # This allows one library to embed another library without making a collision.
 if (NOT CMAKE_PROJECT_NAME OR "${CMAKE_PROJECT_NAME}" STREQUAL "asmjit")
   project(asmjit CXX)
 endif()
+
+include(CheckCXXCompilerFlag)
+include(GNUInstallDirs)
 
 # =============================================================================
 # [AsmJit - Deprecated]
@@ -71,7 +72,7 @@ set(ASMJIT_EMBED      ${ASMJIT_EMBED}             CACHE BOOL "Embed 'asmjit' lib
 set(ASMJIT_STATIC     ${ASMJIT_STATIC}            CACHE BOOL "Build 'asmjit' library as static")
 set(ASMJIT_SANITIZE   ${ASMJIT_SANITIZE}          CACHE STRING "Build with sanitizers: 'address', 'undefined', etc...")
 set(ASMJIT_BUILD_X86  ${ASMJIT_BUILD_X86}         CACHE BOOL "Build X86 backends (X86 and X86_64)")
-set(ASMJIT_BUILD_ARM  ${ASMJIT_BUILD_ARM}         CACHE BOOL "Build ARM backends (ARM/Trumb and AArch64")
+set(ASMJIT_BUILD_ARM  ${ASMJIT_BUILD_ARM}         CACHE BOOL "Build ARM backends (AArch64)")
 
 # =============================================================================
 # [AsmJit - Project]
@@ -139,6 +140,7 @@ function(asmjit_add_target target target_type)
     add_library(${target} ${target_type} ${X_SOURCES})
   endif()
 
+  set_target_properties(${target} PROPERTIES DEFINE_SYMBOL "")
   target_link_libraries(${target} PRIVATE ${X_LIBRARIES})
 
   # target_link_options was added in cmake v3.13, don't use it for now...
@@ -235,7 +237,7 @@ if (NOT WIN32)
   list(APPEND ASMJIT_DEPS pthread)
 endif()
 
-if ("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
+if ("${CMAKE_SYSTEM_NAME}" MATCHES "Linux" OR "${CMAKE_SYSTEM_NAME}" MATCHES "NetBSD")
   list(APPEND ASMJIT_DEPS rt)
 endif()
 
@@ -254,8 +256,7 @@ endif()
 
 foreach(build_option ASMJIT_STATIC
                      ASMJIT_BUILD_X86
-                     #ASMJIT_BUILD_ARM
-                     ASMJIT_BUILD_A64
+                     ASMJIT_BUILD_ARM
                      ASMJIT_NO_DEPRECATED
                      ASMJIT_NO_JIT
                      ASMJIT_NO_LOGGING
@@ -286,29 +287,34 @@ endif()
 
 set(ASMJIT_SRC_LIST
   asmjit/asmjit.h
+  asmjit/asmjit-scope-begin.h
+  asmjit/asmjit-scope-end.h
 
   asmjit/core.h
   asmjit/core/api-build_p.h
   asmjit/core/api-config.h
-  asmjit/core/arch.cpp
-  asmjit/core/arch.h
+  asmjit/core/archtraits.cpp
+  asmjit/core/archtraits.h
+  asmjit/core/archcommons.h
   asmjit/core/assembler.cpp
   asmjit/core/assembler.h
   asmjit/core/builder.cpp
   asmjit/core/builder.h
-  asmjit/core/callconv.cpp
-  asmjit/core/callconv.h
   asmjit/core/codebuffer.h
-  asmjit/core/codebufferwriter_p.h
   asmjit/core/codeholder.cpp
   asmjit/core/codeholder.h
+  asmjit/core/codewriter.cpp
+  asmjit/core/codewriter_p.h
   asmjit/core/compiler.cpp
   asmjit/core/compiler.h
+  asmjit/core/compilerdefs.h
   asmjit/core/constpool.cpp
   asmjit/core/constpool.h
   asmjit/core/cpuinfo.cpp
   asmjit/core/cpuinfo.h
   asmjit/core/datatypes.h
+  asmjit/core/emithelper.cpp
+  asmjit/core/emithelper_p.h
   asmjit/core/emitter.cpp
   asmjit/core/emitter.h
   asmjit/core/emitterutils.cpp
@@ -322,6 +328,8 @@ set(ASMJIT_SRC_LIST
   asmjit/core/formatter.h
   asmjit/core/func.cpp
   asmjit/core/func.h
+  asmjit/core/funcargscontext.cpp
+  asmjit/core/funcargscontext_p.h
   asmjit/core/globals.cpp
   asmjit/core/globals.h
   asmjit/core/inst.cpp
@@ -370,25 +378,54 @@ set(ASMJIT_SRC_LIST
   asmjit/core/zonevector.cpp
   asmjit/core/zonevector.h
 
+  asmjit/arm.h
+  asmjit/arm/armarchtraits_p.h
+  asmjit/arm/armfeatures.cpp
+  asmjit/arm/armfeatures.h
+  asmjit/arm/armformatter.cpp
+  asmjit/arm/armformatter_p.h
+  asmjit/arm/armfunc.cpp
+  asmjit/arm/armfunc_p.h
+  asmjit/arm/armglobals.h
+  asmjit/arm/armoperand.h
+  asmjit/arm/a64assembler.cpp
+  asmjit/arm/a64assembler.h
+  asmjit/arm/a64builder.cpp
+  asmjit/arm/a64builder.h
+  asmjit/arm/a64compiler.cpp
+  asmjit/arm/a64compiler.h
+  asmjit/arm/a64emithelper.cpp
+  asmjit/arm/a64emithelper_p.h
+  asmjit/arm/a64emitter.h
+  asmjit/arm/a64globals.h
+  asmjit/arm/a64instapi.cpp
+  asmjit/arm/a64instapi_p.h
+  asmjit/arm/a64instdb.cpp
+  asmjit/arm/a64instdb.h
+  asmjit/arm/a64operand.cpp
+  asmjit/arm/a64operand.h
+  asmjit/arm/a64rapass.cpp
+  asmjit/arm/a64rapass_p.h
+  asmjit/arm/a64utils.h
+
   asmjit/x86.h
-  asmjit/x86/x86archdata.cpp
-  asmjit/x86/x86archdata_p.h
+  asmjit/x86/x86archtraits_p.h
   asmjit/x86/x86assembler.cpp
   asmjit/x86/x86assembler.h
   asmjit/x86/x86builder.cpp
   asmjit/x86/x86builder.h
-  asmjit/x86/x86callconv.cpp
-  asmjit/x86/x86callconv_p.h
   asmjit/x86/x86compiler.cpp
   asmjit/x86/x86compiler.h
+  asmjit/x86/x86emithelper.cpp
+  asmjit/x86/x86emithelper_p.h
   asmjit/x86/x86emitter.h
   asmjit/x86/x86features.cpp
   asmjit/x86/x86features.h
   asmjit/x86/x86formatter.cpp
   asmjit/x86/x86formatter_p.h
+  asmjit/x86/x86func.cpp
+  asmjit/x86/x86func_p.h
   asmjit/x86/x86globals.h
-  asmjit/x86/x86internal.cpp
-  asmjit/x86/x86internal_p.h
   asmjit/x86/x86instdb.cpp
   asmjit/x86/x86instdb.h
   asmjit/x86/x86instdb_p.h
@@ -447,8 +484,15 @@ if (NOT ASMJIT_EMBED)
                     CFLAGS     ${ASMJIT_PRIVATE_CFLAGS}
                     CFLAGS_DBG ${ASMJIT_PRIVATE_CFLAGS_DBG}
                     CFLAGS_REL ${ASMJIT_PRIVATE_CFLAGS_REL})
-  target_include_directories(asmjit BEFORE INTERFACE ${ASMJIT_INCLUDE_DIRS})
+
   target_compile_options(asmjit INTERFACE ${ASMJIT_CFLAGS})
+  target_include_directories(asmjit BEFORE INTERFACE
+                             $<BUILD_INTERFACE:${ASMJIT_INCLUDE_DIRS}>
+                             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
+  # Add blend2d::blend2d alias.
+  add_library(asmjit::asmjit ALIAS asmjit)
+  # TODO: [CMAKE] Deprecated alias - we use projectname::libraryname convention now.
   add_library(AsmJit::AsmJit ALIAS asmjit)
 
   # Add AsmJit install instructions (library and public headers).
@@ -487,7 +531,16 @@ if (NOT ASMJIT_EMBED)
                     asmjit_test_x86_sections)
       asmjit_add_target(${_target} TEST
                         SOURCES    test/${_target}.cpp
-                        LIBRARIES  AsmJit::AsmJit
+                        LIBRARIES  asmjit::asmjit
+                        CFLAGS     ${ASMJIT_PRIVATE_CFLAGS}
+                        CFLAGS_DBG ${ASMJIT_PRIVATE_CFLAGS_DBG}
+                        CFLAGS_REL ${ASMJIT_PRIVATE_CFLAGS_REL})
+    endforeach()
+
+    foreach(_target asmjit_bench_x86)
+      asmjit_add_target(${_target} EXECUTABLE
+                        SOURCES    test/${_target}.cpp
+                        LIBRARIES  asmjit::asmjit
                         CFLAGS     ${ASMJIT_PRIVATE_CFLAGS}
                         CFLAGS_DBG ${ASMJIT_PRIVATE_CFLAGS_DBG}
                         CFLAGS_REL ${ASMJIT_PRIVATE_CFLAGS_REL})
@@ -496,36 +549,39 @@ if (NOT ASMJIT_EMBED)
     if (NOT ASMJIT_NO_INTROSPECTION)
       asmjit_add_target(asmjit_test_x86_instinfo TEST
                         SOURCES    test/asmjit_test_x86_instinfo.cpp
-                        LIBRARIES  AsmJit::AsmJit
+                        LIBRARIES  asmjit::asmjit
                         CFLAGS     ${ASMJIT_PRIVATE_CFLAGS}
                         CFLAGS_DBG ${ASMJIT_PRIVATE_CFLAGS_DBG}
                         CFLAGS_REL ${ASMJIT_PRIVATE_CFLAGS_REL})
     endif()
 
+    asmjit_add_target(asmjit_test_assembler TEST
+                      SOURCES    test/asmjit_test_assembler.cpp
+                                 test/asmjit_test_assembler.h
+                                 test/asmjit_test_assembler_a64.cpp
+                      LIBRARIES  asmjit::asmjit
+                      CFLAGS     ${ASMJIT_PRIVATE_CFLAGS}
+                      CFLAGS_DBG ${ASMJIT_PRIVATE_CFLAGS_DBG}
+                      CFLAGS_REL ${ASMJIT_PRIVATE_CFLAGS_REL})
+
     if (NOT (ASMJIT_NO_BUILDER OR ASMJIT_NO_COMPILER))
-      # Vectorcall tests and XMM tests require at least SSE2 (required in 32-bit mode).
+      # Vectorcall tests and XMM tests require at least SSE2 in 32-bit mode (in 64-bit mode it's implicit).
       set(sse2_flags "")
       if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC" OR "x${CMAKE_CXX_SIMULATE_ID}" STREQUAL "xMSVC")
         asmjit_detect_cflags(sse2_flags "-arch:SSE2")
       else()
         asmjit_detect_cflags(sse2_flags "-msse2")
       endif()
-      asmjit_add_target(asmjit_test_x86_cc TEST
-                        SOURCES    test/asmjit_test_x86_cc.cpp
-                        LIBRARIES  AsmJit::AsmJit
+      asmjit_add_target(asmjit_test_compiler TEST
+                        SOURCES    test/asmjit_test_compiler.cpp
+                                   test/asmjit_test_compiler.h
+                                   test/asmjit_test_compiler_a64.cpp
+                                   test/asmjit_test_compiler_x86.cpp
+                        LIBRARIES  asmjit::asmjit
                         CFLAGS     ${ASMJIT_PRIVATE_CFLAGS} ${sse2_flags}
                         CFLAGS_DBG ${ASMJIT_PRIVATE_CFLAGS_DBG}
                         CFLAGS_REL ${ASMJIT_PRIVATE_CFLAGS_REL})
     endif()
-
-    foreach(_target asmjit_bench_x86)
-      asmjit_add_target(${_target} EXECUTABLE
-                        SOURCES    test/${_target}.cpp
-                        LIBRARIES  AsmJit::AsmJit
-                        CFLAGS     ${ASMJIT_PRIVATE_CFLAGS}
-                        CFLAGS_DBG ${ASMJIT_PRIVATE_CFLAGS_DBG}
-                        CFLAGS_REL ${ASMJIT_PRIVATE_CFLAGS_REL})
-    endforeach()
   endif()
 endif()
 
